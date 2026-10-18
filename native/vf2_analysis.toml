@@ -1,0 +1,33 @@
+# Entry seeds for six direct tail-branch targets missed by ReXGlue v0.10.0.
+# Addresses are from the initial validation log for XEX SHA256
+# 00677891100a73636c9b1937c996c320b437eb61f11ce86848ddf6ee8a8e289f.
+# No bytes are patched and no instructions are skipped.
+# Size 0 asks analysis to discover boundaries rather than inventing lengths.
+[functions]
+"0x82130C30" = { size = 0 }
+"0x82444F38" = { size = 0 }
+"0x82444F50" = { size = 0 }
+"0x82444F68" = { size = 0 }
+"0x82444F80" = { size = 0 }
+"0x82444F98" = { size = 0 }
+# First runtime attempt reached this indirect call (runtime-first.log).
+"0x822DE498" = { size = 0 }
+# Second runtime attempt, with Xenos initialized (runtime-second.log).
+"0x821771A0" = { size = 0 }
+
+# Runtime evidence: runtime-probe-1.log
+"0x823B45A0" = { size = 0 }
+
+# Runtime evidence: runtime-probe-2.log
+"0x823AF2D8" = { size = 0 }
+
+# Runtime evidence: runtime-probe-3.log
+"0x82130BF8" = { size = 0 }
+
+# Runtime evidence: runtime-probe-4.log
+"0x82130C10" = { size = 0 }
+
+# Runtime evidence: runtime-probe-5.log
+"0x82130C00" = { size = 0 }
+# Runtime evidence: runtime-probe-6.log
+"0x82187398" = { size = 0 }

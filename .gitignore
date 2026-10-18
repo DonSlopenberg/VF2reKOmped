@@ -1,0 +1,67 @@
+# --- Copyrighted game material: never publish -------------------------------
+# Original Xbox 360 game files and anything decoded/extracted from them.
+data/game/
+data/textures/original/
+data/textures/replacements/arenas/*.png
+data/music/
+data/artwork/
+native/generated/default/
+analysis/decoded-banks/
+analysis/unpacked-archives/
+analysis/bitmap-captures/
+analysis/farc-offline-export*/
+analysis/earlier-*-export-probes/
+analysis/graphics-export-verification/
+analysis/demo-shaders*/
+analysis/demo-shader-disassembly/
+analysis/baseline_generated/
+analysis/claude-rom-dis.txt
+analysis/**/*.raw
+analysis/**/*.bin
+analysis/**/*.ram
+analysis/**/*.dds
+analysis/**/*.farc
+backups/
+
+# --- Local, machine-specific or generated -----------------------------------
+data/engine/vf2.toml
+data/engine/*.exe
+data/engine/*.dll
+data/logs/
+data/userdata/
+analysis/**/userdata/
+native/out/
+tools/downloads/
+tools/rexglue-sdk-*/
+*.exe
+*.dll
+*.pdb
+*.obj
+*.pyc
+__pycache__/
+
+# --- Bulky test-run output (logs/CSV may contain local paths) ----------------
+analysis/**/*.log
+analysis/**/*.csv
+analysis/**/*.rgba
+analysis/**/*.png
+
+# Release packages
+dist/
+
+# User-supplied original game package (never publish)
+/Virtua Fighter 2.rar
+/65D8FAC10B21FA185AAB93607663594CB568C78658
+/5841129C/
+
+# Local artwork sources (the published master is native/resources/logo_master.png)
+/*.psd
+/*.jpg
+/*.webp
+/Virtua_Fighter_2_Logo.png
+
+# Analysis: publish the written reports only (test-run output, captures and
+# code/ROM listings stay local)
+analysis/*
+!analysis/*.md
+native/userdata/

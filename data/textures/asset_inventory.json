@@ -1,0 +1,261 @@
+[
+  {
+    "path": "achieve01.png",
+    "bytes": 5234,
+    "signature": "89504E47",
+    "sha256": "728f07066f4dcb212d6e2646775d0be932c3ebf655a0e81bfade74708321e662",
+    "storage": "PNG image; directly editable"
+  },
+  {
+    "path": "achieve02.png",
+    "bytes": 4607,
+    "signature": "89504E47",
+    "sha256": "01bd7b6a8f3bcebd3f6f8685ad43c7b0efc86a5931451a68f9cb04c1ea0882b1",
+    "storage": "PNG image; directly editable"
+  },
+  {
+    "path": "achieve03.png",
+    "bytes": 5271,
+    "signature": "89504E47",
+    "sha256": "4b53324bf16a9b9b71428d7a580745bcac884a4eefa98f3c209e3bc661e5c2a5",
+    "storage": "PNG image; directly editable"
+  },
+  {
+    "path": "achieve04.png",
+    "bytes": 4851,
+    "signature": "89504E47",
+    "sha256": "d2f6ad8b2fdea07a29d42270da40959ad29ed0f164249157e1cafe86a4a8cc5a",
+    "storage": "PNG image; directly editable"
+  },
+  {
+    "path": "achieve05.png",
+    "bytes": 5742,
+    "signature": "89504E47",
+    "sha256": "052de1d32e01b0d630c285a8701014b365e31bd63009288b5c249b91de0459d8",
+    "storage": "PNG image; directly editable"
+  },
+  {
+    "path": "achieve06.png",
+    "bytes": 5259,
+    "signature": "89504E47",
+    "sha256": "9458382cbcbfd7dbee7d1398e618d7d311b6f9aada8511dce93ddeb5f16afca0",
+    "storage": "PNG image; directly editable"
+  },
+  {
+    "path": "achieve07.png",
+    "bytes": 5181,
+    "signature": "89504E47",
+    "sha256": "2e5198734d123edf07cbbd189600acd7e81089867b8e766fd6611ab6e12789c8",
+    "storage": "PNG image; directly editable"
+  },
+  {
+    "path": "achieve08.png",
+    "bytes": 6170,
+    "signature": "89504E47",
+    "sha256": "ad08ac5b2b321498db989ace9c4b395cc700441cce7fabeb92ae27f88ac693e5",
+    "storage": "PNG image; directly editable"
+  },
+  {
+    "path": "achieve09.png",
+    "bytes": 3761,
+    "signature": "89504E47",
+    "sha256": "58b897434b6c0f98bd9822b6d9bca285d74381f1526491586968daeb655a519e",
+    "storage": "PNG image; directly editable"
+  },
+  {
+    "path": "achieve10.png",
+    "bytes": 5553,
+    "signature": "89504E47",
+    "sha256": "737c23f0a1226f932b0a0cfbd0130058e06cb7b17c0dbb12653bbfdf4e22c797",
+    "storage": "PNG image; directly editable"
+  },
+  {
+    "path": "achieve11.png",
+    "bytes": 7608,
+    "signature": "89504E47",
+    "sha256": "90c42d2aba8902b7746b1e4309f09c1c26d777597001e72eaf95695a54ca4398",
+    "storage": "PNG image; directly editable"
+  },
+  {
+    "path": "achieve12.png",
+    "bytes": 5737,
+    "signature": "89504E47",
+    "sha256": "11bc9d023fb6f6d42dbc742fa3d53b25be44da3fe6da1c7cb6d5ceafd834ef41",
+    "storage": "PNG image; directly editable"
+  },
+  {
+    "path": "ArcadeInfo.xml",
+    "bytes": 2098,
+    "signature": "FEFF003C",
+    "sha256": "d1ac227d5e408055d967767c354f597a1d1d7895f7d52032861a203521f3bb05",
+    "storage": "Not decoded; extension is a hint only"
+  },
+  {
+    "path": "AvatarAssetPack",
+    "bytes": 13799424,
+    "signature": "50495253",
+    "sha256": "7159bf29cb70879b0b71eeb4e197c6b1e272a46d94d84629f1fddf09b737fe6d",
+    "storage": "Not decoded; extension is a hint only"
+  },
+  {
+    "path": "default.xex",
+    "bytes": 2277376,
+    "signature": "58455832",
+    "sha256": "00677891100a73636c9b1937c996c320b437eb61f11ce86848ddf6ee8a8e289f",
+    "storage": "Not decoded; extension is a hint only"
+  },
+  {
+    "path": "game.png",
+    "bytes": 3637,
+    "signature": "89504E47",
+    "sha256": "aba4c83db7171d0535519d3ac6fa088fe0c53d716fcbe7517f1cec49d1abd699",
+    "storage": "PNG image; directly editable"
+  },
+  {
+    "path": "media/rom/auth2d/n_advvf2.farc",
+    "bytes": 1438,
+    "signature": "0FF512ED",
+    "sha256": "5ee068ca1d0f9e0d276aa96dd7d9434d4a244ff72c9aac36a1ffa923295f9371",
+    "storage": "XMem LZX TD wrapper; inner data not decoded"
+  },
+  {
+    "path": "media/rom/auth2d/n_cmn.farc",
+    "bytes": 44958,
+    "signature": "0FF512ED",
+    "sha256": "e34edea414f7be0222cbed28f36ee3f83af3a5dee017fd72b8f10e7b8066bf0a",
+    "storage": "XMem LZX TD wrapper; inner data not decoded"
+  },
+  {
+    "path": "media/rom/auth2d/n_info.farc",
+    "bytes": 2960,
+    "signature": "0FF512ED",
+    "sha256": "02efecd70950067901ae4bdb1d62b0ef97526d3be86fb4d0a9984eb0064bf003",
+    "storage": "XMem LZX TD wrapper; inner data not decoded"
+  },
+  {
+    "path": "media/rom/auth2d/n_vf2.farc",
+    "bytes": 4148,
+    "signature": "0FF512ED",
+    "sha256": "d4c5f21f6d390ce6350362b87233bb5473bf7c77b8339752b3a531bd00c4768f",
+    "storage": "XMem LZX TD wrapper; inner data not decoded"
+  },
+  {
+    "path": "media/rom/fontmap.farc",
+    "bytes": 12580,
+    "signature": "0FF512ED",
+    "sha256": "45f743b16fc48e6b43cc0a3690c477331f3eb4805d5825bb6ab3e91a853309b4",
+    "storage": "XMem LZX TD wrapper; inner data not decoded"
+  },
+  {
+    "path": "media/rom/sound/adx/sega441.adx",
+    "bytes": 41674,
+    "signature": "80000024",
+    "sha256": "e7b82a5a123276d6b62ab20d23edf2f3034a01e2af2a65f444d1ddc3cd70de5a",
+    "storage": "Not decoded; extension is a hint only"
+  },
+  {
+    "path": "media/rom/sound/vf2.acf",
+    "bytes": 1418,
+    "signature": "0FF512ED",
+    "sha256": "7606c17bd27ce1f7bc7bcd17df7e213289c960b48a838b7b4ed0826280ee2222",
+    "storage": "XMem LZX TD wrapper; inner data not decoded"
+  },
+  {
+    "path": "media/rom/sound/vf2_all.acb",
+    "bytes": 1738836,
+    "signature": "0FF512ED",
+    "sha256": "3b120b8c03c81edd03eb48b37faa0730c58804c1ff41080c179c78ee3a4074b3",
+    "storage": "XMem LZX TD wrapper; inner data not decoded"
+  },
+  {
+    "path": "media/rom/sound/vf2_all.awb",
+    "bytes": 34798984,
+    "signature": "41465332",
+    "sha256": "d09bb1c1cee7db13d42907f808caaab0ae4cf8391fbcf3a054eb075882006158",
+    "storage": "AFS2 audio bank; encoded entries not extracted"
+  },
+  {
+    "path": "media/rom/sprite/n_advvf2.farc",
+    "bytes": 159274,
+    "signature": "0FF512ED",
+    "sha256": "405292e8f6ec9481c20bf74444e95ba9faffd018e3403af2b405d6108729ee00",
+    "storage": "XMem LZX TD wrapper; inner data not decoded"
+  },
+  {
+    "path": "media/rom/sprite/n_cmn.farc",
+    "bytes": 228680,
+    "signature": "0FF512ED",
+    "sha256": "d5ed7ace2aeca337f9577fe8065ef2b25443356f0e2d26b23b3fef28ac972ecc",
+    "storage": "XMem LZX TD wrapper; inner data not decoded"
+  },
+  {
+    "path": "media/rom/sprite/n_fnt.farc",
+    "bytes": 1281534,
+    "signature": "0FF512ED",
+    "sha256": "4bdef5737c7c42e1bbf0a972d0bf2e6683f60be0dd4d2892991a81764029aa4f",
+    "storage": "XMem LZX TD wrapper; inner data not decoded"
+  },
+  {
+    "path": "media/rom/sprite/n_info.farc",
+    "bytes": 405284,
+    "signature": "0FF512ED",
+    "sha256": "4bbbef1ea3df5849418bc84d8e96149fa2cf6874b75f20b9f003f7309d6c293f",
+    "storage": "XMem LZX TD wrapper; inner data not decoded"
+  },
+  {
+    "path": "media/rom/sprite/n_vf2.farc",
+    "bytes": 161184,
+    "signature": "0FF512ED",
+    "sha256": "616f39bb917624fccd4b5e1ce740048df5eda78b9f7d0c7ea9c6d24f97703ece",
+    "storage": "XMem LZX TD wrapper; inner data not decoded"
+  },
+  {
+    "path": "media/rom/string_array.farc",
+    "bytes": 44892,
+    "signature": "0FF512ED",
+    "sha256": "965da5f8aee844d223f5fc8beaff37e00540552e04e9e88d8ea0b2f9d1368d1a",
+    "storage": "XMem LZX TD wrapper; inner data not decoded"
+  },
+  {
+    "path": "media/rom/vf2_rom/ic12_13.bin",
+    "bytes": 163512,
+    "signature": "0FF512ED",
+    "sha256": "bd214351b4cca8d33ab6bc2cff5af9c75e3d419b312ce86b362fe85927095ef0",
+    "storage": "XMem LZX TD wrapper; inner data not decoded"
+  },
+  {
+    "path": "media/rom/vf2_rom/ic12_15.bin",
+    "bytes": 166852,
+    "signature": "0FF512ED",
+    "sha256": "10269300e2d43a2a82b684aec9e6647aee73805561148bab048ca569626b5701",
+    "storage": "XMem LZX TD wrapper; inner data not decoded"
+  },
+  {
+    "path": "media/rom/vf2_rom/rom_data.bin",
+    "bytes": 7418558,
+    "signature": "0FF512ED",
+    "sha256": "7ac0881d6be482b4d5691198d3fcb7d9adb4a9b555fd1d7387d54e4fafb1efb9",
+    "storage": "XMem LZX TD wrapper; inner data not decoded"
+  },
+  {
+    "path": "media/rom/vf2_rom/rom_pol.bin",
+    "bytes": 3131388,
+    "signature": "0FF512ED",
+    "sha256": "b7b1b3d239a19528d4c78933c4601f312aace7e8db78a4132db013c04f6896d9",
+    "storage": "XMem LZX TD wrapper; inner data not decoded"
+  },
+  {
+    "path": "media/rom/vf2_rom/rom_tex.bin",
+    "bytes": 457936,
+    "signature": "0FF512ED",
+    "sha256": "3a06f7f5f67c4616234ea54aada2683f5a35df70d8405e69a32527506eb66de2",
+    "storage": "XMem LZX TD wrapper; inner data not decoded"
+  },
+  {
+    "path": "media/x360/SYSTEM.farc",
+    "bytes": 3671,
+    "signature": "46417263",
+    "sha256": "1c0fcd7a945c4cc0ca754531ea7bc9234407078ea8643f7a1b60f0d91cc2d3c0",
+    "storage": "FARC archive signature; entries not extracted"
+  }
+]

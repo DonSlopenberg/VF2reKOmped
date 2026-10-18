@@ -1,0 +1,38 @@
+﻿path,bytes,signature,sha256,storage
+achieve01.png,5234,89504E47,728f07066f4dcb212d6e2646775d0be932c3ebf655a0e81bfade74708321e662,PNG image; directly editable
+achieve02.png,4607,89504E47,01bd7b6a8f3bcebd3f6f8685ad43c7b0efc86a5931451a68f9cb04c1ea0882b1,PNG image; directly editable
+achieve03.png,5271,89504E47,4b53324bf16a9b9b71428d7a580745bcac884a4eefa98f3c209e3bc661e5c2a5,PNG image; directly editable
+achieve04.png,4851,89504E47,d2f6ad8b2fdea07a29d42270da40959ad29ed0f164249157e1cafe86a4a8cc5a,PNG image; directly editable
+achieve05.png,5742,89504E47,052de1d32e01b0d630c285a8701014b365e31bd63009288b5c249b91de0459d8,PNG image; directly editable
+achieve06.png,5259,89504E47,9458382cbcbfd7dbee7d1398e618d7d311b6f9aada8511dce93ddeb5f16afca0,PNG image; directly editable
+achieve07.png,5181,89504E47,2e5198734d123edf07cbbd189600acd7e81089867b8e766fd6611ab6e12789c8,PNG image; directly editable
+achieve08.png,6170,89504E47,ad08ac5b2b321498db989ace9c4b395cc700441cce7fabeb92ae27f88ac693e5,PNG image; directly editable
+achieve09.png,3761,89504E47,58b897434b6c0f98bd9822b6d9bca285d74381f1526491586968daeb655a519e,PNG image; directly editable
+achieve10.png,5553,89504E47,737c23f0a1226f932b0a0cfbd0130058e06cb7b17c0dbb12653bbfdf4e22c797,PNG image; directly editable
+achieve11.png,7608,89504E47,90c42d2aba8902b7746b1e4309f09c1c26d777597001e72eaf95695a54ca4398,PNG image; directly editable
+achieve12.png,5737,89504E47,11bc9d023fb6f6d42dbc742fa3d53b25be44da3fe6da1c7cb6d5ceafd834ef41,PNG image; directly editable
+ArcadeInfo.xml,2098,FEFF003C,d1ac227d5e408055d967767c354f597a1d1d7895f7d52032861a203521f3bb05,Not decoded; extension is a hint only
+AvatarAssetPack,13799424,50495253,7159bf29cb70879b0b71eeb4e197c6b1e272a46d94d84629f1fddf09b737fe6d,Not decoded; extension is a hint only
+default.xex,2277376,58455832,00677891100a73636c9b1937c996c320b437eb61f11ce86848ddf6ee8a8e289f,Not decoded; extension is a hint only
+game.png,3637,89504E47,aba4c83db7171d0535519d3ac6fa088fe0c53d716fcbe7517f1cec49d1abd699,PNG image; directly editable
+media/rom/auth2d/n_advvf2.farc,1438,0FF512ED,5ee068ca1d0f9e0d276aa96dd7d9434d4a244ff72c9aac36a1ffa923295f9371,XMem LZX TD wrapper; inner data not decoded
+media/rom/auth2d/n_cmn.farc,44958,0FF512ED,e34edea414f7be0222cbed28f36ee3f83af3a5dee017fd72b8f10e7b8066bf0a,XMem LZX TD wrapper; inner data not decoded
+media/rom/auth2d/n_info.farc,2960,0FF512ED,02efecd70950067901ae4bdb1d62b0ef97526d3be86fb4d0a9984eb0064bf003,XMem LZX TD wrapper; inner data not decoded
+media/rom/auth2d/n_vf2.farc,4148,0FF512ED,d4c5f21f6d390ce6350362b87233bb5473bf7c77b8339752b3a531bd00c4768f,XMem LZX TD wrapper; inner data not decoded
+media/rom/fontmap.farc,12580,0FF512ED,45f743b16fc48e6b43cc0a3690c477331f3eb4805d5825bb6ab3e91a853309b4,XMem LZX TD wrapper; inner data not decoded
+media/rom/sound/adx/sega441.adx,41674,80000024,e7b82a5a123276d6b62ab20d23edf2f3034a01e2af2a65f444d1ddc3cd70de5a,Not decoded; extension is a hint only
+media/rom/sound/vf2.acf,1418,0FF512ED,7606c17bd27ce1f7bc7bcd17df7e213289c960b48a838b7b4ed0826280ee2222,XMem LZX TD wrapper; inner data not decoded
+media/rom/sound/vf2_all.acb,1738836,0FF512ED,3b120b8c03c81edd03eb48b37faa0730c58804c1ff41080c179c78ee3a4074b3,XMem LZX TD wrapper; inner data not decoded
+media/rom/sound/vf2_all.awb,34798984,41465332,d09bb1c1cee7db13d42907f808caaab0ae4cf8391fbcf3a054eb075882006158,AFS2 audio bank; encoded entries not extracted
+media/rom/sprite/n_advvf2.farc,159274,0FF512ED,405292e8f6ec9481c20bf74444e95ba9faffd018e3403af2b405d6108729ee00,XMem LZX TD wrapper; inner data not decoded
+media/rom/sprite/n_cmn.farc,228680,0FF512ED,d5ed7ace2aeca337f9577fe8065ef2b25443356f0e2d26b23b3fef28ac972ecc,XMem LZX TD wrapper; inner data not decoded
+media/rom/sprite/n_fnt.farc,1281534,0FF512ED,4bdef5737c7c42e1bbf0a972d0bf2e6683f60be0dd4d2892991a81764029aa4f,XMem LZX TD wrapper; inner data not decoded
+media/rom/sprite/n_info.farc,405284,0FF512ED,4bbbef1ea3df5849418bc84d8e96149fa2cf6874b75f20b9f003f7309d6c293f,XMem LZX TD wrapper; inner data not decoded
+media/rom/sprite/n_vf2.farc,161184,0FF512ED,616f39bb917624fccd4b5e1ce740048df5eda78b9f7d0c7ea9c6d24f97703ece,XMem LZX TD wrapper; inner data not decoded
+media/rom/string_array.farc,44892,0FF512ED,965da5f8aee844d223f5fc8beaff37e00540552e04e9e88d8ea0b2f9d1368d1a,XMem LZX TD wrapper; inner data not decoded
+media/rom/vf2_rom/ic12_13.bin,163512,0FF512ED,bd214351b4cca8d33ab6bc2cff5af9c75e3d419b312ce86b362fe85927095ef0,XMem LZX TD wrapper; inner data not decoded
+media/rom/vf2_rom/ic12_15.bin,166852,0FF512ED,10269300e2d43a2a82b684aec9e6647aee73805561148bab048ca569626b5701,XMem LZX TD wrapper; inner data not decoded
+media/rom/vf2_rom/rom_data.bin,7418558,0FF512ED,7ac0881d6be482b4d5691198d3fcb7d9adb4a9b555fd1d7387d54e4fafb1efb9,XMem LZX TD wrapper; inner data not decoded
+media/rom/vf2_rom/rom_pol.bin,3131388,0FF512ED,b7b1b3d239a19528d4c78933c4601f312aace7e8db78a4132db013c04f6896d9,XMem LZX TD wrapper; inner data not decoded
+media/rom/vf2_rom/rom_tex.bin,457936,0FF512ED,3a06f7f5f67c4616234ea54aada2683f5a35df70d8405e69a32527506eb66de2,XMem LZX TD wrapper; inner data not decoded
+media/x360/SYSTEM.farc,3671,46417263,1c0fcd7a945c4cc0ca754531ea7bc9234407078ea8643f7a1b60f0d91cc2d3c0,FARC archive signature; entries not extracted

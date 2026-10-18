@@ -1,0 +1,9 @@
+#include <windows.h>
+#include "vf2_version.h"
+1 ICON "vf2.ico"
+101 RCDATA "logo.png"
+#define VF2_RC_VERSION VF2_LAUNCHER_VERSION_RC
+#define VF2_RC_VERSION_TEXT VF2_LAUNCHER_VERSION_TEXT
+#define VF2_RC_DESCRIPTION "Virtua Fighter 2 reKOmped Launcher"
+#define VF2_RC_FILENAME "Virtua Fighter 2.exe"
+#include "version_block.rc2"

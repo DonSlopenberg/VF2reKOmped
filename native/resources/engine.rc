@@ -1,0 +1,8 @@
+#include <windows.h>
+#include "vf2_version.h"
+1 ICON "vf2.ico"
+#define VF2_RC_VERSION VF2_GAME_VERSION_RC
+#define VF2_RC_VERSION_TEXT VF2_GAME_VERSION_TEXT
+#define VF2_RC_DESCRIPTION "Virtua Fighter 2 reKOmped"
+#define VF2_RC_FILENAME "vf2.exe"
+#include "version_block.rc2"
