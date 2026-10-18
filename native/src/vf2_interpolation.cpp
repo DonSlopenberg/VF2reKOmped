@@ -31,16 +31,10 @@ std::atomic_uint simulation_tick=0;
 std::atomic<double> boundary=0;
 double Seconds(){return std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();}
 thread_local FixedClock simulation;
-double Rate() {
-  const char* rate=std::getenv("VF2_DEMO_RENDER_HZ");
-  return rate?std::clamp(std::atof(rate),60.0,240.0):60;
-}
+double Rate(){return 60;}  // the game runs at its native 60 Hz
 double Alpha(){return std::clamp((Seconds()-boundary.load())*60,0.0,1.0);}
 unsigned Tick(){return simulation_tick.load();}
-unsigned SimulationSteps() {
-  if(!std::getenv("VF2_DEMO_RENDER_HZ"))return 1;
-  return simulation.Advance(Seconds());
-}
+unsigned SimulationSteps(){return 1;}  // one native update per host update
 void CommitStep() {
   ++simulation_tick;
   boundary.store(simulation.boundary);
@@ -210,66 +204,7 @@ void ShadowBoardInstruction(uint8_t* base,uint32_t pc) {
   if(board_count<board_blends.size())board_blends[board_count++]={id,neighbour,opposite,tick,std::abs(board_fraction)};
 }
 }
-// Opt-in identity probe before visibility clipping and polygon compaction.
-// Source faces/vertices and command slots can be examined without attempting
-// to blend unrelated indices from the final, camera-dependent draw buffer.
+// Model renderer: shadow-board smoothing (vf2_smooth_shadow_edges, off by default).
 REX_HOOK_RAW(sub_82141F98) {
-  if(const char* path=std::getenv("VF2_MESH_ID_TRACE")) {
-    const unsigned tick=REX_LOAD_U32(0x82E7E38C);
-    static const unsigned start=std::getenv("VF2_MESH_ID_TRACE_START")?unsigned(std::atoi(std::getenv("VF2_MESH_ID_TRACE_START"))):300;
-    if(tick>=start && tick<start+120) {
-      static std::ofstream out(path);
-      static unsigned last_frame=~0u;
-      if(last_frame!=vf2::render::clock.frame) {
-        last_frame=vf2::render::clock.frame;
-        const uint32_t m2=REX_LOAD_U32(0x82AB6CC8);
-        out<<"F,"<<last_frame<<','<<tick<<','<<std::hex<<m2<<','<<REX_LOAD_U32(m2+0x4B350)<<','<<REX_LOAD_U32(m2+0x4B354)
-           <<','<<REX_LOAD_U32(m2+0x4B358)<<std::dec<<'\n';
-        static unsigned dumped_tick=~0u;
-        if(std::getenv("VF2_M2_STATE_DUMP") && dumped_tick!=tick) {  // M2 context words +0x40000..+0x58000
-          dumped_tick=tick;
-          out<<"S,"<<last_frame<<','<<tick<<std::hex;
-          static const uint32_t dump_lo=std::getenv("VF2_M2_STATE_LO")?std::strtoul(std::getenv("VF2_M2_STATE_LO"),nullptr,16):0x40000,dump_hi=std::getenv("VF2_M2_STATE_HI")?std::strtoul(std::getenv("VF2_M2_STATE_HI"),nullptr,16):0x58000;
-          for(uint32_t a=dump_lo;a<dump_hi;a+=4)out<<','<<REX_LOAD_U32(m2+a);
-          out<<std::dec<<'\n';
-        }
-      }
-      const uint32_t model=ctx.r3.u32;
-      out<<vf2::render::clock.frame<<','<<tick<<','<<std::hex<<model<<','
-         <<REX_LOAD_U32(model+16)<<','<<REX_LOAD_U32(model+28)<<','
-         <<ctx.r30.u32<<','<<ctx.r31.u32<<std::dec<<','
-         <<REX_LOAD_U32(model+8)<<','<<REX_LOAD_U32(model+20);
-      // Content hashes: model block, and 64 bytes at +28 / +40 / +32.
-      auto hash=[&](uint32_t address,unsigned bytes){
-        uint64_t h=1469598103934665603ull;
-        if(address>=0x80000000u && address<0xF0000000u)for(unsigned i=0;i<bytes;++i)h=(h^REX_LOAD_U8(address+i))*1099511628211ull;
-        return uint32_t(h^(h>>32));};
-      const uint32_t m2=REX_LOAD_U32(0x82AB6CC8);
-      out<<std::hex<<','<<hash(m2+0x4B204,64)<<','<<hash(REX_LOAD_U32(model+28),64)<<','<<hash(REX_LOAD_U32(model+40),64)
-         <<','<<hash(REX_LOAD_U32(model+32),64)<<std::dec<<','<<ctx.r4.u32<<','<<ctx.r5.u32<<','<<ctx.r6.u32;
-      for(unsigned i=0;i<16;++i){PPCRegister v{};v.u32=REX_LOAD_U32(m2+0x4B204+i*4);out<<','<<v.f32;}
-      if(std::getenv("VF2_MESH_RAW")) {  // raw words at +28 (first 32) and +40 (first 16)
-        out<<std::hex;
-        for(uint32_t base_address:{REX_LOAD_U32(model+28),REX_LOAD_U32(model+40)}) {
-          const unsigned words=base_address==REX_LOAD_U32(model+28)?32:16;
-          for(unsigned i=0;i<words;++i)out<<','<<(base_address>=0x80000000u && base_address<0xF0000000u?REX_LOAD_U32(base_address+i*4):0);
-        }
-        out<<std::dec;
-      }
-      out<<'\n';
-      if(tick%10==0)out.flush();
-    }
-  }
-  // Diagnostics: VF2_TEST_SKIP_MODELS="lo-hi" skips models whose polygon count
-  // (+8) is in [lo,hi]; optional ":keylo-keyhi" restricts by +16 address.
-  if(static const char* spec=std::getenv("VF2_TEST_SKIP_MODELS"); spec) {
-    // ';'-separated rules
-    const uint32_t polys=REX_LOAD_U32(ctx.r3.u32+8),key=REX_LOAD_U32(ctx.r3.u32+16);
-    for(const char* rule=spec;rule && *rule;) {
-      unsigned lo=0,hi=0,klo=0,khi=0xFFFFFFFFu;
-      if(std::sscanf(rule,"%u-%u:%x-%x",&lo,&hi,&klo,&khi)>=2 && polys>=lo && polys<=hi && key>=klo && key<=khi)return;
-      rule=std::strchr(rule,';');if(rule)++rule;
-    }
-  }
   if(!SmoothShadowBoard(ctx,base))__imp__sub_82141F98(ctx,base);
 }

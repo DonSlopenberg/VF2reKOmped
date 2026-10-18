@@ -5,7 +5,6 @@
 #include "vf2_panorama_math.h"
 #include "vf2_fight.h"
 #include "vf2_demo.h"
-#include "vf2_freelook.h"
 #include "vf2_interpolation.h"
 #include <rex/hook.h>
 #include <rex/cvar.h>
@@ -116,7 +115,6 @@ uint64_t capture_sequence=0;
 uint16_t next_delayed_pitch=0;
 bool next_delayed_valid=false,entry_fresh=false;
 uint64_t pitch_matches=0,pitch_mismatches=0,entry_missed=0;
-constexpr double kFreelookYawSign=1,kFreelookPitchSign=-1;  // + pitch = look up
 std::array<NativeScroll,2> native_scroll_buffers;
 uint32_t color_canvases=0, blit_storage=0;
 // Downsampled copies of the decoded canvases for the background blur:
@@ -287,13 +285,6 @@ void CaptureComputedNativeScroll(PPCContext&, uint8_t* base) {
   } else {
     pending_native_scroll.y=NativeVerticalPhase(vertical,pitch);
   }
-  if(const char* path=std::getenv("VF2_PITCH_TRACE")) {
-    static std::ofstream out(path);
-    out<<REX_LOAD_U32(0x82E7E38C)<<','<<entry_fresh<<','<<pending_native_scroll.delayed_pitch<<','
-       <<next_delayed_pitch<<','<<post<<','<<LE16(base+memory+0x50300c)<<','<<int(bank)<<','
-       <<vertical<<','<<REX_LOAD_U32(cpu+88)<<','
-       <<NativeVerticalPort(pending_native_scroll.delayed_pitch,bank)<<','<<pending_native_scroll.y<<'\n';
-  }
   pending_native_scroll.delayed_pitch=pitch;
   next_delayed_pitch=post;next_delayed_valid=true;entry_fresh=false;
   pending_native_scroll.valid=true;
@@ -388,8 +379,6 @@ void LoadReplacement(PPCContext& ctx,uint8_t* base,int index) {
   const uint32_t guest=REX_KERNEL_MEMORY()->SystemHeapAlloc(uint32_t(pixels.size()));
   if(!guest){REXLOG_ERROR("VF2 replacement: no guest memory for {}x{}",w,h);return;}
   std::memcpy(base+guest,pixels.data(),pixels.size());
-  if(const char* alpha=std::getenv("VF2_REPL_ALPHA"))
-    for(size_t i=3;i<pixels.size();i+=4)base[guest+i]=uint8_t(std::atoi(alpha));
   rex::CallFrame call(ctx);
   call.ctx.r3.u64=0x26000100u+uint32_t(index);call.ctx.r4.u64=470;
   call.ctx.r5.u64=uint32_t(w);call.ctx.r6.u64=uint32_t(texture_h);call.ctx.r7.u64=guest;call.ctx.r8.u64=uint32_t(pixels.size());
@@ -480,13 +469,6 @@ void Begin(PPCContext& ctx, uint8_t* base) {
   trace_agrees=int(rendered_scroll.sequence);trace_differs=0;
   camera_pose.Capture(game_tick,found.panorama,phase_x,phase_y);
   phase_x=camera_pose.x;phase_y=camera_pose.y;
-  // Diagnostic free-look rotates the 3D view matrix; turn the distant layer
-  // by the same angle. Native scale: full width per 360 degrees horizontally,
-  // 1/16 pixel per pitch unit (65536 units per turn) vertically.
-  if(const auto look=freelook::Get(); look.enabled) {
-    phase_x+=kFreelookYawSign*look.yaw*p.columns*8/360.0;
-    phase_y+=kFreelookPitchSign*look.pitch*4096.0/360.0;
-  }
   // Deterministic subtexel sampling probe in the isolated demo lab only.
   if(vf2::demo::Enabled())if(const char* offset=std::getenv("VF2_DEMO_SAMPLE_Y"))
     phase_y+=std::atof(offset);
@@ -530,19 +512,6 @@ void Begin(PPCContext& ctx, uint8_t* base) {
       rgb_color[channel]=float((dominant>>(16-channel*8))&255)/255.0f;
     return dominant_count>0;
   };
-  if(std::getenv("VF2_CHAR_PROBE")) {
-    // Compare the live character pens of this panorama's tiles with the first
-    // snapshot taken for this arena.
-    static int snap_arena=-1;static std::vector<uint8_t> snap;
-    auto pens=[&](unsigned code,std::vector<uint8_t>& out){
-      for(int r=0;r<8;++r)for(int c=0;c<8;++c)out.push_back(base[engine+(code/128)*8192+r*1024+(code%128)*8+c]);};
-    std::vector<uint8_t> now;
-    for(auto attr:p.tiles)pens(attr&0x3fff,now);
-    if(snap_arena!=found.panorama){snap_arena=found.panorama;snap=now;}
-    size_t bad=0;for(size_t i=0;i<now.size();i+=64)bad+=std::memcmp(&now[i],&snap[i],64)!=0;
-    static uint64_t n=0;
-    if(n++%30==0)REXLOG_INFO("VF2 char probe: frame={} phase_y={} changed_tiles={}/{}",frame,phase_y,bad,p.tiles.size());
-  }
   sky_color_valid=sample_edge(0,sky_swatch_pixel,sky_color);
   std::array<float,3> ground_color{};
   ground_color_valid=sample_edge(p.rows*8-1,ground_swatch_pixel,ground_color);
@@ -644,10 +613,9 @@ void End(PPCContext& ctx,uint8_t* base) {
 void FlushPending(PPCContext& ctx,uint8_t* base,unsigned priority) {
   auto& queue=pending[priority];
   if(!queue.count || !color_canvases)return;
-  if(const char* skip=std::getenv("VF2_SKIP_PRIO"); skip && unsigned(std::atoi(skip))==priority)return;
   rex::CallFrame call(ctx);
   // Bind the decoded color canvas with LINEAR min/mag (native 428).
-  static const uint32_t filter=std::getenv("VF2_TEST_FILTER")?uint32_t(std::atoi(std::getenv("VF2_TEST_FILTER"))):428;
+  constexpr uint32_t filter=428;
   const int level=blurred_level[priority];
   const auto bind=[&](bool blurred) {
     const uint32_t canvas=blurred ? blur_canvases+(priority*3+level-1)*128 : color_canvases+priority*128;
@@ -660,18 +628,7 @@ void FlushPending(PPCContext& ctx,uint8_t* base,unsigned priority) {
   const double ui_width=REX_LOAD_U32(0x824A0498+36);
   const double ui_height=REX_LOAD_U32(0x824A0498+40);
   const double margin=(Extent()-496)/2;
-  if(const char* path=std::getenv("VF2_FLUSH_TRACE")) {
-    static std::ofstream out(path);
-    out<<frame<<','<<priority<<','<<queue.count;
-    for(int i=0;i<queue.count;++i)for(double v:queue.items[i])out<<','<<v;
-    out<<'\n';
-  }
-  PendingBlits debug_queue;
   const PendingBlits* source=&queue;
-  if(std::getenv("VF2_DEBUG_CANVAS") && priority==1) {
-    debug_queue.Add(-margin,0,496+margin,384,0,0,1024,512);source=&debug_queue;
-    if(level){debug_queue.items[0]={-margin,0,496+margin,384,0,0,1024,512};}
-  }
   for(int i=0;i<source->count;++i) {
     auto [x0,y0,x1,y1,u0,v0,u1,v1]=source->items[i];
     if(x1<=x0 || y1<=y0)continue;
@@ -901,10 +858,6 @@ REX_HOOK_RAW(sub_821441D8) {
       call.ctx.r3.u64=9;call.ctx.r4.u64=0;call.ctx.r5.u64=4;
       sub_820F8508(call.ctx,base);
     };
-    if(const char* qpath=std::getenv("VF2_QUAD_TRACE")) {
-      static std::ofstream quads(qpath);
-      quads<<frame<<','<<drawing_bank<<','<<decoding_colors<<','<<left<<','<<right<<','<<top<<','<<bottom<<','<<u0<<','<<u1<<','<<v0<<','<<v1<<std::endl;
-    }
     if(decoding_colors) {
       // Decode at integer 1:1 positions, before camera translation/FOV. The
       // resulting target contains real palette colors, not encoded indices.
@@ -1012,13 +965,6 @@ REX_HOOK_RAW(sub_820FE650) {
   // The original bitmap pass clears with the global dark-blue RGB. Override
   // only its opaque arena-background clear; HUD clears remain transparent.
   using namespace vf2::panorama;
-  if(std::getenv("VF2_DEBUG_GREEN") && uint32_t(ctx.lr)==0x8214419C) {
-    static uint64_t n=0;
-    if(n++<40)REXLOG_INFO("VF2 clear probe: frame={} decoding={} prio={} transparent={} f4={}",frame,decoding_colors,color_priority,transparent_clear,ctx.f4.f64);
-  }
-  if(decoding_colors && color_priority==1 && uint32_t(ctx.lr)==0x8214419C && std::getenv("VF2_DEBUG_GREEN")) {
-    ctx.f1.f64=0;ctx.f2.f64=1;ctx.f3.f64=0;ctx.f4.f64=1;__imp__sub_820FE650(ctx,base);return;
-  }
   if(transparent_clear && uint32_t(ctx.lr)==0x8214419C) {
     ctx.f1.f64=0;ctx.f2.f64=0;ctx.f3.f64=0;ctx.f4.f64=0;
   } else
@@ -1180,7 +1126,7 @@ REX_HOOK_RAW(sub_82188AB0) {
     }
     for(int i=vf2::panorama::kSwatchRow;i<vf2::panorama::kSwatchRow+2 && i<int(count);++i)REX_STORE_U16(destination+i*2,0);
     static uint64_t logged=0;
-    if(logged++%(std::getenv("VF2_LINE_LOG")?20:600)==0) {
+    if(logged++%600==0) {
       auto v=[&](int r){return int(int16_t(REX_LOAD_U16(source+(r&511)*2)));};
       REXLOG_INFO("VF2 line align: layer={} vscroll={} phase=({},{}) shift={} src[0,50,100,150,200,250,300]={},{},{},{},{},{},{}",
           layer,vscroll,vf2::panorama::camera_pose.x,vf2::panorama::camera_pose.y,shift,v(0),v(50),v(100),v(150),v(200),v(250),v(300));
@@ -1200,21 +1146,9 @@ REX_HOOK_RAW(sub_82188AB0) {
   }
   if(ctx.r3.u32 && layer==1 && count<=512 && vf2::panorama::last_pass_panorama) {
     using namespace vf2::panorama;
-    if(const char* test=std::getenv("VF2_LINE_TEST_SHIFT"))  // sign probe (rows 0..99 only)
-      for(uint32_t i=0;i<count && i<382;++i)REX_STORE_U16(destination+i*2,uint16_t(int16_t(std::atoi(test))));
     line_offsets.fill(0);
     for(uint32_t i=0;i<count;++i)line_offsets[i]=int16_t(REX_LOAD_U16(destination+i*2));
     line_offsets_frame=frame;line_offsets_valid=true;
-  }
-  if(const char* path=std::getenv("VF2_LINE_TRACE"); path && ctx.r3.u32) {
-    static std::ofstream out(path);
-    static uint64_t logged=0;
-    if(logged++%30==0) {
-      out<<vf2::panorama::frame<<','<<layer<<','<<vf2::panorama::active;
-      for(uint32_t i=0;i<count && i<384;++i)out<<','<<REX_LOAD_U16(destination+i*2);
-      out<<'\n';out.flush();
-      out<<"src";for(uint32_t i=0;i<512;++i)out<<','<<REX_LOAD_U16(source+i*2);out<<'\n';
-    }
   }
 }
 
@@ -1240,10 +1174,6 @@ REX_HOOK_RAW(sub_821442A0) {
 extern "C" REX_FUNC(__imp__sub_82199CB8);
 REX_HOOK_RAW(sub_82199CB8) {
   using namespace vf2::panorama;
-  if(std::getenv("VF2_UPLOAD_TRACE")) {
-    static std::ofstream out(std::getenv("VF2_UPLOAD_TRACE"));
-    out<<frame<<','<<std::hex<<uint32_t(ctx.lr)<<','<<ctx.r3.u32<<','<<ctx.r4.u32<<','<<(engine?REX_LOAD_U32(engine+0x118c04):0)<<','<<engine<<std::dec<<','<<have_remapped_background<<'\n';
-  }
   if(have_remapped_background && engine && REXCVAR_GET(vf2_background_bank_guard) &&
      ctx.r3.u32==REX_LOAD_U32(engine+0x118c04) && ctx.r4.u32==engine+0x100000) {
     std::array<uint8_t,32768-kBackgroundBankOffset> native;

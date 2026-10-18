@@ -245,21 +245,12 @@ bool AchievementsBlocked(){return cheats_used.load();}
 void HostFrame(uint8_t* base,bool frontend) {
   if(frontend && locked)locked=false;
   if(frontend){for(auto& a:alternate)a.store(false);for(auto& t:costume_touched)t.store(false);}
-  // Automated tests only: VF2_CHEAT_TEST="p1 p2", VF2_HEALTH_TRACE=path.
+  // Automated tests only: VF2_CHEAT_TEST="p1 p2".
   static const bool test_cheats=[] {
     if(const char* t=std::getenv("VF2_CHEAT_TEST"))
       SetCheats({{t[0]=='1',t[1]&&t[2]=='1'}});
     return true;
   }();
-  if(const char* path=std::getenv("VF2_HEALTH_TRACE")) {
-    static std::ofstream out(path);static uint64_t n=0;
-    if(uint8_t* ram=Ram(base); ram && ++n%30==0) {
-      const uint32_t a=LE32(ram+0x500804),b=LE32(ram+0x500808);
-      if(a>=0x500000 && a<0x580000 && b>=0x500000 && b<0x580000)
-        out<<n<<','<<int(ram[a+0x1ac]|ram[a+0x1ad]<<8)<<','<<int(ram[b+0x1ac]|ram[b+0x1ad]<<8)<<','
-           <<int(ram[0x5000a0]|ram[0x5000a1]<<8)<<','<<int(ram[0x500054])<<'\n'<<std::flush;
-    }
-  }
   // Cheats: keep the selected fighters at the native round maximum.
   const Cheats c=GetCheats();
   if(!c.infinite_health[0] && !c.infinite_health[1])return;

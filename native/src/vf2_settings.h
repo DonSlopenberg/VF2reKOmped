@@ -12,7 +12,6 @@
 #include "vf2_fight.h"
 #include "vf2_fight_config.h"
 #include "vf2_display.h"
-#include "vf2_freelook.h"
 #include "vf2_arcade.h"
 
 namespace vf2 {

@@ -36,8 +36,6 @@ REXCVAR_DEFINE_BOOL(vf2_arcade_end_to_menu, true, "Game",
     "Return to the Main Menu when an Arcade/Ranking run ends instead of the attract demo");
 REXCVAR_DEFINE_BOOL(vf2_startup_press_start, true, "Game",
     "Skip the title by pressing Start (runs the original sign-in and storage-device flow)");
-REXCVAR_DEFINE_BOOL(vf2_f6_suspend_m2e, false, "Video",
-    "F6 freezes by suspending TaskM2E (legacy: hides the game screen) instead of skipping emulated updates");
 
 namespace vf2::fight {
 bool Pending();
@@ -52,7 +50,6 @@ bool boot_complete = false;
 bool logged_tasks = false;
 constexpr uint32_t kScene = 0x82BB7BF8;
 std::atomic_bool settings_open{false}, return_to_menu{false};
-bool settings_suspended=false;
 std::atomic_bool simulation_frozen{false};
 std::atomic_int menu_input{0};
 std::atomic_bool inject_start{false};
@@ -130,23 +127,10 @@ void HostFrame(PPCContext& ctx, uint8_t* base) {
           <<int(base[0x82AAEB99])<<'\n';
     }
   }
-  // Suspend only TaskM2E for F6. Native pause/menu tasks continue running.
-  // Resuming a task we suspended leaves the game's own pause timescale intact.
+  // F6 pauses by skipping emulated-system updates; the last frame keeps
+  // rendering under the settings window. Native pause/menu tasks continue.
   const bool wants_pause=settings_open.load() && !Pending();
-  // TaskM2E also draws the whole Model 2 screen; suspending it leaves only
-  // the frontend backdrop. Skip emulated-system updates instead, so the last
-  // frame keeps rendering under the settings window.
-  simulation_frozen.store(wants_pause && boot_complete && !REXCVAR_GET(vf2_f6_suspend_m2e));
-  if(wants_pause && !settings_suspended && boot_complete && REXCVAR_GET(vf2_f6_suspend_m2e) &&
-      REX_LOAD_U32(kM2E+16)!=3) {
-    rex::CallFrame call(ctx);call.ctx.r3.u64=1;sub_82199420(call.ctx,base);
-    settings_suspended=true;
-    REXLOG_INFO("VF2 F6: suspended M2E; native pause state retained");
-  } else if(!wants_pause && settings_suspended) {
-    rex::CallFrame call(ctx);call.ctx.r3.u64=0;sub_82199420(call.ctx,base);
-    settings_suspended=false;
-    REXLOG_INFO("VF2 F6: restored M2E; native pause state retained");
-  }
+  simulation_frozen.store(wants_pause && boot_complete);
   if(return_to_menu.exchange(false)) {
     // Same original reset used by TaskPause's confirmed Exit Game action.
     rex::CallFrame call(ctx);sub_82183140(call.ctx,base);sub_82110B50(call.ctx,base);

@@ -5,7 +5,6 @@
 #include "vf2_panorama.h"
 #include "vf2_demo.h"
 #include "vf2_interpolation.h"
-#include "vf2_freelook.h"
 #include "vf2_arcade.h"
 #include <rex/hook.h>
 #include <rex/logging.h>
@@ -433,29 +432,6 @@ REX_HOOK_RAW(sub_8212F838) {
     vf2::arcade::NativeInstruction(ctx,base,pc);
     vf2::render::ShadowBoardInstruction(base,pc);
   }
-  // Diagnostics: i960 PCs executed per update tick (window from
-  // VF2_PC_TRACE_START, 64 ticks), written as ranges "tick: a-b a-b ...".
-  static const char* pc_trace=std::getenv("VF2_PC_TRACE");
-  if(const char* path=pc_trace; path && program) {
-    static std::vector<uint8_t> hit(0x100000);static uint32_t current=~0u;
-    static const uint32_t start=std::getenv("VF2_PC_TRACE_START")?std::atoi(std::getenv("VF2_PC_TRACE_START")):400;
-    const uint32_t tick=REX_LOAD_U32(0x82E7E38C);
-    if(tick!=current) {
-      if(current>=start && current<start+64) {
-        static std::ofstream out(path);
-        out<<current<<':';
-        for(uint32_t a=0;a<hit.size();) {
-          if(!hit[a]){++a;continue;}
-          uint32_t b=a;while(b+4<hit.size() && hit[b+4])b+=4;
-          out<<' '<<std::hex<<a<<'-'<<b<<std::dec;a=b+4;
-        }
-        out<<'\n';out.flush();
-      }
-      std::fill(hit.begin(),hit.end(),0);current=tick;
-    }
-    const uint32_t pc=REX_LOAD_U32(0x82AB6750)-program;
-    if(pc<hit.size())hit[pc]=1;
-  }
   // Feed the selected shared level into the original adaptive-difficulty
   // lookup after its SRAM read, keeping its performance index/table intact.
   // SRAM and ordinary Arcade behavior remain untouched.
@@ -468,13 +444,11 @@ REX_HOOK_RAW(sub_8212F838) {
   if(program && REX_LOAD_U32(0x82AB6750)==program+0xF208)
     vf2::fight::MatchEnded(base);
   if (program && REX_LOAD_U32(0x82AB6750)==program+0xA6C0) {
-    vf2::freelook::Restore(base);
     vf2::demo::NativeUpdate(base);
   }
   if (program && REX_LOAD_U32(0x82AB6750)==program+0xA6C0)
     vf2::fight::Update(ctx,base,false);
   if (program && REX_LOAD_U32(0x82AB6750)==program+0x24534) {
-    vf2::freelook::Apply(base);
     vf2::panorama::CaptureNativeScroll(ctx,base);
   }
   if (program && REX_LOAD_U32(0x82AB6750)==program+0x24664)

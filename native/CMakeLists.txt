@@ -34,25 +34,16 @@ set(VF2_SOURCES
     src/vf2_video.cpp
     src/vf2_test_input.cpp
     src/vf2_keyboard.cpp
-    src/vf2_asset_export.cpp
     src/vf2_logo.cpp
     src/vf2_fight.cpp
     src/vf2_fight_host.cpp
     src/vf2_i960.cpp
     src/vf2_demo.cpp
     src/vf2_interpolation.cpp
-    src/vf2_freelook.cpp
     src/vf2_arcade.cpp
 )
 
-# Arena experiments are not part of the installed build. They must be enabled
-# explicitly for a separate diagnostic binary, never by the normal launcher.
-option(VF2_EXPERIMENTAL_ARENA "Build unfinished arena bitmap experiments" OFF)
-if(VF2_EXPERIMENTAL_ARENA)
-    list(APPEND VF2_SOURCES src/vf2_arena.cpp)
-else()
-    list(APPEND VF2_SOURCES src/vf2_background_scroll.cpp src/vf2_panorama.cpp)
-endif()
+list(APPEND VF2_SOURCES src/vf2_background_scroll.cpp src/vf2_panorama.cpp)
 
 if(WIN32)
     add_executable(vf2 WIN32 ${VF2_SOURCES})
@@ -61,9 +52,7 @@ else()
 endif()
 
 rexglue_setup_target(vf2 GPU_PLUGINS xenos)
-if(NOT VF2_EXPERIMENTAL_ARENA)
-    target_compile_definitions(vf2 PRIVATE VF2_PANORAMA_RENDERER=1)
-endif()
+target_compile_definitions(vf2 PRIVATE VF2_PANORAMA_RENDERER=1)
 if(WIN32)
     enable_language(RC)
     target_sources(vf2 PRIVATE resources/engine.rc)

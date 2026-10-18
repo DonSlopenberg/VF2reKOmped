@@ -65,16 +65,14 @@ class Vf2App : public rex::ReXApp {
     const auto requested_refresh=rex::cvar::GetFlagByName("video_mode_refresh_rate");
     // Guest video mode is distinct from monitor refresh. Preserve original
     // animation/gameplay tick speed while the host can present at 120 Hz+.
-    const char* diagnostic_rate=std::getenv("VF2_DEMO_RENDER_HZ");
-    const double outer_rate=diagnostic_rate?std::clamp(std::atof(diagnostic_rate),60.0,240.0):60;
+    constexpr double outer_rate=60;
     rex::cvar::SetFlagByName("video_mode_refresh_rate",std::to_string(outer_rate));
     for(auto& flag:rex::cvar::GetRegistry())if(flag.name=="video_mode_refresh_rate") {
       flag.constraints.min=outer_rate;flag.constraints.max=outer_rate;
       flag.lifecycle=rex::cvar::Lifecycle::kInitOnly;
       flag.description="VF2 guest simulation refresh: fixed 60 Hz; host display refresh is independent";
     }
-    if(diagnostic_rate)REXLOG_INFO("VF2 experimental clocks: requested refresh={}, outer/render={} Hz; native simulation=60 Hz",requested_refresh,outer_rate);
-    else REXLOG_INFO("VF2 timing: requested guest refresh={}, fixed guest=60 Hz; host presentation is independent",requested_refresh);
+    REXLOG_INFO("VF2 timing: requested guest refresh={}, fixed guest=60 Hz; host presentation is independent",requested_refresh);
     // The SDK applies fullscreen before Open/SetPresenter. Defer it until
     // the live surface and its DPI are attached, just like a later F4 toggle.
     startup_fullscreen_ = rex::cvar::GetFlagByName("fullscreen") == "true";
@@ -313,17 +311,4 @@ class Vf2App : public rex::ReXApp {
   std::unique_ptr<vf2::SettingsDialog> settings_ui_;
   std::jthread capture_thread_;
   std::unique_ptr<vf2::ControllerUi> controller_ui_;
-
-  // Override virtual hooks for customization:
-  // void OnPostInitLogging() override {}
-  // void OnPreSetup(rex::RuntimeConfig& config) override {}
-  // void OnLoadXexImage(std::string& xex_image) override {}
-  // void OnPostLoadXexImage() override {}
-  // void OnPostSetup() override {}
-  // void OnCreateDialogs(rex::ui::ImGuiDrawer* drawer) override {}
-  // std::unique_ptr<rex::ui::ImGuiDialog> CreateAchievementsOverlay() override;
-  // std::unique_ptr<rex::ui::AchievementNotificationDialog>
-  // CreateAchievementNotificationDialog() override;
-  // void OnShutdown() override {}
-  // void OnConfigurePaths(rex::PathConfig& paths) override {}
 };
