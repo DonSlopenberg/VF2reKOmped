@@ -1,5 +1,10 @@
 # Virtua Fighter 2 reKOmped Changelog
 
+## Unreleased
+
+- Launcher: the update notice uses the regular font and sits evenly
+  between Play and the credits.
+
 ## 1.3.2 (2026-10-18)
 
 - Fixed characters and arena parts that occasionally showed wrong colours
