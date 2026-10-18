@@ -1,6 +1,4 @@
-<p align="center"><img src="docs/vf2-cast.jpg" alt="Virtua Fighter 2 cast" width="600"></p>
-
-<p align="center"><img src="native/resources/logo.png" alt="Virtua Fighter 2 reKOmped" width="600"></p>
+<p align="center"><img src="docs/VF2reKO_title.jpg" alt="Virtua Fighter 2 cast" width="600"></p>
 
 <p align="center"><b>2012 Xbox360 Live Arcade Edition, recompiled for Windows</b></p>
 
