@@ -2,9 +2,9 @@
 
 Usage: python tools/package_release.py   (after native/build_release.cmd)
 
-dist/VF2-reKOmped-<v>/                     private reference installation
+dist/VF2reKOmped-<v>-reference/            private reference installation
                                            (includes the original game files)
-dist/VF2-reKOmped-<v>-cleanroom.zip        distributable package: modified
+dist/VF2reKOmped-<v>-windows-x64.zip       distributable package: modified
                                            binaries, upscaled backgrounds and
                                            the installer; no original files.
                                            The user runs INSTALL.cmd with
@@ -18,8 +18,8 @@ root=Path(__file__).resolve().parents[1]
 build=root/'native/out/build/win-amd64-release'
 version=re.search(r'set\(VF2_GAME_VERSION\s+"?([\d.]+)',(root/'native/CMakeLists.txt').read_text()).group(1)
 dist=root/'dist'
-stage=dist/f'VF2-reKOmped-{version}'
-clean=dist/f'VF2-reKOmped-{version}-cleanroom'
+stage=dist/f'VF2reKOmped-{version}-reference'
+clean=dist/f'VF2reKOmped-{version}-windows-x64'
 for d in (stage,clean):
     if d.exists():shutil.rmtree(d)
 stage.mkdir(parents=True)
@@ -30,6 +30,18 @@ def copy(source,relative):
     target.parent.mkdir(parents=True,exist_ok=True)
     shutil.copy2(source,target)
 
+def copy_png(source,relative):
+    # Shipped PNGs keep pixels, colour profile and DPI only: text/EXIF chunks
+    # (e.g. editor history with timestamps and document IDs) are dropped.
+    data=source.read_bytes();out=bytearray(data[:8]);pos=8
+    while pos<len(data):
+        length=int.from_bytes(data[pos:pos+4],'big');kind=data[pos+4:pos+8]
+        if kind not in (b'tEXt',b'iTXt',b'zTXt',b'eXIf',b'tIME'):out+=data[pos:pos+12+length]
+        pos+=12+length
+    target=stage/relative
+    target.parent.mkdir(parents=True,exist_ok=True)
+    target.write_bytes(bytes(out))
+
 # ---- reference installation ------------------------------------------------
 copy(build/'vf2_launcher.exe','Virtua Fighter 2.exe')
 copy(build/'vf2.exe','data/engine/vf2.exe')
@@ -37,7 +49,8 @@ for dll in sorted(build.glob('*.dll')):copy(dll,'data/engine/'+dll.name)
 for p in sorted((root/'data/game').rglob('*')):
     if p.is_file():copy(p,p.relative_to(root))
 for p in sorted((root/'data/textures/replacements/arenas').glob('*')):
-    if p.suffix.lower() in ('.png','.md'):copy(p,p.relative_to(root))
+    if p.suffix.lower()=='.png':copy_png(p,p.relative_to(root))
+    elif p.suffix.lower()=='.md':copy(p,p.relative_to(root))
 for name in ['data/userdata','data/logs']:
     (stage/name).mkdir(parents=True,exist_ok=True)
 (stage/'data/engine/vf2.toml').write_text('''# Virtua Fighter 2 reKOmped settings. Paths are supplied by the launcher.
@@ -177,7 +190,7 @@ with zipfile.ZipFile(archive) as z:
 digest=sha(archive.read_bytes())
 (dist/(archive.name+'.sha256')).write_text(digest+'  '+archive.name+'\n',encoding='ascii')
 (dist/'CLEANROOM_VERIFICATION.json').write_text(json.dumps(report,indent=2),encoding='utf-8')
-old=dist/f'VF2-reKOmped-{version}.zip'
+old=dist/f'VF2reKOmped-{version}.zip'
 for f in (old,dist/(old.name+'.sha256')):
     if f.exists():f.unlink()
 print(json.dumps({'reference':str(stage),'reference_files':len(manifest)+1,
