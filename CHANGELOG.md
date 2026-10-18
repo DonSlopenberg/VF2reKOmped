@@ -1,5 +1,12 @@
 # Virtua Fighter 2 reKOmped Changelog
 
+## 1.3.2 (2026-10-18)
+
+- Fixed characters and arena parts that occasionally showed wrong colours
+  (for example a green beard, or a black fighter with green highlights) or
+  missing/black textures from character select until the next load. The GPU
+  now reloads texture memory once after each load.
+
 ## 1.3.1 (2026-10-18)
 
 - Esc pauses any match (Arcade, Local Versus, Custom Fight) for the side that
