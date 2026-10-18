@@ -4,7 +4,7 @@ This is a working native C++ test build with a ReXGlue runtime. Compilation,
 linking and the title screen have been verified. The user confirmed local
 two-player Versus on an earlier test build and completed two Arcade fights
 on the final filtered build. The game's Achievements menu currently blocks
-in an unimplemented runtime UI call. See `../analysis/ETAP_3.md`.
+in an unimplemented runtime UI call. See `../analysis/STAGE3_FIRST_APP_20261014.md`.
 
 ReXGlue v0.10.0 successfully decoded the original XEX and passed static
 validation after six additional function entry seeds in `vf2_analysis.toml`.

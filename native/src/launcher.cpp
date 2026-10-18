@@ -14,6 +14,9 @@
 #include <commctrl.h>
 #include <memory>
 #include <thread>
+#include <fstream>
+#include <ctime>
+#include <cstring>
 #include <winhttp.h>
 #include <shellapi.h>
 #include "launcher_config.h"
@@ -163,6 +166,22 @@ std::string GameVersion() {
   }
   return cached;
 }
+// Link time of the engine executable (PE header TimeDateStamp, UTC), so the
+// footer's build date belongs to the engine, not to this launcher.
+std::string EngineBuild() {
+  for(const auto& exe:{folder/L"data"/L"engine"/L"vf2.exe",folder/L"vf2.exe"}) {
+    std::ifstream file(exe,std::ios::binary);
+    uint32_t pe=0,stamp=0;char signature[4]{};
+    if(!file.seekg(0x3C) || !file.read(reinterpret_cast<char*>(&pe),4))continue;
+    if(!file.seekg(pe) || !file.read(signature,4) || std::memcmp(signature,"PE\0\0",4))continue;
+    if(!file.seekg(pe+8) || !file.read(reinterpret_cast<char*>(&stamp),4) || !stamp)continue;
+    const std::time_t time=stamp;std::tm utc{};
+    if(gmtime_s(&utc,&time))continue;
+    char text[32];std::strftime(text,sizeof(text),"%Y.%m.%d %H:%M UTC",&utc);
+    return text;
+  }
+  return VF2_BUILD_STAMP;
+}
 // Update check: the latest release tag of the GitHub repository, fetched once
 // in the background. Only a notice is shown; nothing is downloaded.
 constexpr UINT kUpdateFound=WM_APP+1;
@@ -238,8 +257,9 @@ void PaintContent(HDC dc) {
   RECT credits{Scale(32),Scale(825),Scale(528),Scale(845)};
   DrawTextW(dc,L"Created by Sol, Opus and Don Slopenberg",-1,&credits,DT_CENTER|DT_SINGLELINE|DT_VCENTER);
   RECT footer{Scale(16),Scale(847),Scale(544),Scale(869)};
+  static const std::string engine_build=EngineBuild();
   std::string build="Version "+GameVersion()+"  |  ReXGlue SDK " VF2_REXGLUE_VERSION
-                    "  |  Build " VF2_BUILD_STAMP;
+                    "  |  Build "+engine_build;
   std::wstring label(build.begin(),build.end());
   DrawTextW(dc,label.c_str(),-1,&footer,DT_CENTER|DT_SINGLELINE|DT_VCENTER|DT_END_ELLIPSIS);
 }

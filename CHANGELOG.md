@@ -1,12 +1,21 @@
 # Virtua Fighter 2 reKOmped Changelog
 
-## Unreleased
+## 1.3.3 (2026-10-18)
 
-- Fixed HUD flicker (timer, health bars, SET/READY/WINNER) introduced by
-  the 1.3.2 colour fix: only texture memory is refreshed now, never render
-  targets, and outside loads only the textures that changed.
-- Launcher: the update notice uses the regular font and sits evenly
+- Fixed the HUD flicker (timer, health bars, SET/READY/WINNER) that came
+  with the 1.3.2 colour fix. **Why it appeared:** 1.3.2 made the GPU reload
+  *all* of its memory after every texture upload, including the in-match
+  HUD graphics. That memory includes render targets, and textures in use
+  vanish for a frame while they reload. **How it was fixed:** after a real
+  load the GPU reloads only load-time data (textures and geometry), and
+  during a match only the textures that just changed. Render targets are
+  never touched. Tested: 20 of 20 fights with correct colours, no dropped
+  or dark frames over a whole round captured frame by frame.
+- Launcher: the version and build date in the footer are read from the
+  game executable; the update notice uses the regular font and sits evenly
   between Play and the credits.
+- Analysis notes are all in English now, plus a development journal
+  (`analysis/JOURNAL.md`).
 
 ## 1.3.2 (2026-10-18)
 
