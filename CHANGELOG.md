@@ -9,6 +9,48 @@
 - Launcher opens centred on the screen instead of a cascaded position that
   could be cut off by the taskbar.
 
+### How the colour glitch was tracked down
+
+The report: after a fresh install, Jeffry's beard was green at character
+select and stayed that way in the fight; a restart made it go away. The log
+of that session was gone, and the bug never came back on demand.
+
+1. **Suspects ruled out by reading the code.** The random line-up is
+   written only after the characters are chosen, so it could not affect
+   character select. The costume hook clears a bit only where the i960
+   register holds the controller word. The custom-fight costume bytes were
+   valid (Pai = 6, no +13).
+2. **A reproducible case.** An automated Lau vs Pai fight on the Great Wall
+   with GPU frame captures showed Pai black with green highlights, plus a
+   black floor and banner. With the sides swapped it looked fine, and
+   turning Tourist off seemed to fix it, but a five-way bisect of the
+   Tourist patches then came back clean every time. The bug was
+   intermittent, not tied to a setting.
+3. **Measuring the rate.** A loop of 10 fresh fight starts, each with
+   captures, gave 2 bad runs; a later loop of 20 gave 5. That is roughly one
+   fight start in four.
+4. **The data is correct.** Every rebuild of the 3D colour table (1024
+   RGB555 colours expanded into 16 shades) was dumped in good and bad runs.
+   The colours were byte-for-byte identical, so the game computed the right
+   values and the GPU showed something else.
+5. **A wrong turn.** Forcing the colour table to rebuild every frame turned
+   everything black and green: the source table is only valid on frames the
+   game marks as changed. Re-uploading the finished texture a few frames
+   later changed nothing (5 of 20 still bad). The bad frames also had
+   missing textures (the gold coin) besides wrong colours, so the problem
+   was wider than the colour table.
+6. **A timing race.** Logging every texture upload with a data hash made the
+   bug vanish (0 of 12): a classic sign of a race. The log showed about 150
+   model textures streamed in over ~60 frames from one shared staging
+   buffer, while the game kept rendering. The GPU emulation watches
+   texture memory pages for CPU writes; when it read a page while the game
+   was still writing it, it kept a half-old copy and missed the rest.
+7. **The fix.** Three frames after a burst of model-texture or colour-table
+   uploads ends, the physical memory views are invalidated once, so the GPU
+   reloads them from the now-complete guest memory. Result: **20 of 20**
+   fight starts correct, against 7 of 30 bad before (the chance of 20 clean
+   runs in a row without a fix is about 0.5%).
+
 ## 1.3.1 (2026-10-18)
 
 - Esc pauses any match (Arcade, Local Versus, Custom Fight) for the side that
