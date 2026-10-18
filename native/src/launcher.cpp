@@ -39,7 +39,7 @@ IStream* logoStream=nullptr;
 std::unique_ptr<Gdiplus::Bitmap> logo;
 UINT dpi = 96;
 int Scale(int pixels) { return MulDiv(pixels, dpi, 96); }
-RECT ClientBounds() { return {0,0,Scale(560),Scale(896)}; }
+RECT ClientBounds() { return {0,0,Scale(560),Scale(883)}; }
 std::filesystem::path folder;
 const wchar_t* presets[] = {L"1280x720", L"1920x1080", L"2560x1440", L"3840x2160", L"2560x1080", L"3440x1440"};
 const wchar_t* presetLabels[] = {L"1280 × 720  ·  HD", L"1920 × 1080  ·  Full HD", L"2560 × 1440  ·  QHD", L"3840 × 2160  ·  UHD",
@@ -229,15 +229,15 @@ void PaintContent(HDC dc) {
   RECT edition{Scale(32),Scale(254),Scale(528),Scale(276)};
   DrawTextW(dc,L"2012 Xbox360 Live Arcade Edition",-1,&edition,DT_CENTER|DT_SINGLELINE|DT_VCENTER);
   SetBkMode(dc,TRANSPARENT);SetTextColor(dc,mutedColor);SelectObject(dc,smallFont);
-  if(!updateText.empty()) {
-    updateRect={Scale(32),Scale(810),Scale(528),Scale(832)};
-    SetTextColor(dc,accentColor);
+  if(!updateText.empty()) {  // 12 px gaps: Play (drawn to 793), notice, credits
+    updateRect={Scale(32),Scale(798),Scale(528),Scale(824)};
+    SetTextColor(dc,accentColor);SelectObject(dc,font);
     DrawTextW(dc,updateText.c_str(),-1,&updateRect,DT_CENTER|DT_SINGLELINE|DT_VCENTER|DT_END_ELLIPSIS);
-    SetTextColor(dc,mutedColor);
+    SetTextColor(dc,mutedColor);SelectObject(dc,smallFont);
   }
-  RECT credits{Scale(32),Scale(838),Scale(528),Scale(858)};
+  RECT credits{Scale(32),Scale(825),Scale(528),Scale(845)};
   DrawTextW(dc,L"Created by Sol, Opus and Don Slopenberg",-1,&credits,DT_CENTER|DT_SINGLELINE|DT_VCENTER);
-  RECT footer{Scale(16),Scale(860),Scale(544),Scale(882)};
+  RECT footer{Scale(16),Scale(847),Scale(544),Scale(869)};
   std::string build="Version "+GameVersion()+"  |  ReXGlue SDK " VF2_REXGLUE_VERSION
                     "  |  Build " VF2_BUILD_STAMP;
   std::wstring label(build.begin(),build.end());
