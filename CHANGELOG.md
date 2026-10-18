@@ -19,7 +19,7 @@
   the game version; correct size when moved to a screen with another DPI;
   clearer Random Arenas description.
 
-## 1.3.0 (2026-10-18): 
+## 1.3.0 (2026-10-18)
 
 - Launcher: new **Arcade** section with Tourist, Random Opponents and Random
   Arenas; the help line names F6 (Settings & Custom Fight Launcher); the
