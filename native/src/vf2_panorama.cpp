@@ -10,7 +10,10 @@
 #include <rex/cvar.h>
 #include <rex/logging.h>
 #include <rex/memory.h>
+#include <rex/system/kernel_state.h>
+#include <rex/thread/mutex.h>
 #include <array>
+#include <atomic>
 #include <vector>
 #include <unordered_map>
 #include <cstring>
@@ -1172,8 +1175,35 @@ REX_HOOK_RAW(sub_821442A0) {
 // one bank showed the native window: a vertical seam with mismatched sky.
 // While a panorama is active, every map upload carries its background banks.
 extern "C" REX_FUNC(__imp__sub_82199CB8);
+// Model textures (sub_8213B2A0) and the colour table (sub_8213A6B0) are
+// written into guest memory while the GPU keeps rendering, over many frames
+// of a load. Occasionally the GPU's copy of a page missed a write (about one
+// fight start in four in a test loop): characters and arena parts stayed
+// black/green, untextured or recoloured until the next load, although guest
+// memory was correct. A few frames after a burst of these uploads ends, the
+// physical memory views are invalidated once, so the GPU reloads them.
+namespace {
+std::atomic<unsigned> texture_uploads{0};
+void InvalidateGpuMemory() {
+  auto* memory=rex::system::kernel_memory();
+  if(!memory)return;
+  for(const auto& [start,length]:{std::pair<uint32_t,uint32_t>{0xA0000000u,0x20000000u},
+                                  {0xC0000000u,0x20000000u},{0xE0000000u,0x1FFFF000u}})
+    memory->TriggerPhysicalMemoryCallbacks(rex::thread::global_critical_region::AcquireDirect(),
+                                           start,length,true,false);
+}
+}
+extern "C" REX_FUNC(__imp__sub_821433B8);
+REX_HOOK_RAW(sub_821433B8) {  // once per frame
+  static unsigned seen=0,quiet=0;
+  const unsigned uploads=texture_uploads.load();
+  if(uploads!=seen){seen=uploads;quiet=1;}
+  else if(quiet && ++quiet>3){quiet=0;InvalidateGpuMemory();}
+  __imp__sub_821433B8(ctx,base);
+}
 REX_HOOK_RAW(sub_82199CB8) {
   using namespace vf2::panorama;
+  if(uint32_t(ctx.lr)==0x8213B5F4 || uint32_t(ctx.lr)==0x8213A848)++texture_uploads;
   if(have_remapped_background && engine && REXCVAR_GET(vf2_background_bank_guard) &&
      ctx.r3.u32==REX_LOAD_U32(engine+0x118c04) && ctx.r4.u32==engine+0x100000) {
     std::array<uint8_t,32768-kBackgroundBankOffset> native;
