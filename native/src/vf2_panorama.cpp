@@ -12,8 +12,10 @@
 #include <rex/memory.h>
 #include <rex/system/kernel_state.h>
 #include <rex/thread/mutex.h>
+#include <algorithm>
 #include <array>
 #include <atomic>
+#include <mutex>
 #include <vector>
 #include <unordered_map>
 #include <cstring>
@@ -1176,21 +1178,58 @@ REX_HOOK_RAW(sub_821442A0) {
 // While a panorama is active, every map upload carries its background banks.
 extern "C" REX_FUNC(__imp__sub_82199CB8);
 // Model textures (sub_8213B2A0) and the colour table (sub_8213A6B0) are
-// written into guest memory while the GPU keeps rendering, over many frames
-// of a load. Occasionally the GPU's copy of a page missed a write (about one
-// fight start in four in a test loop): characters and arena parts stayed
-// black/green, untextured or recoloured until the next load, although guest
-// memory was correct. A few frames after a burst of these uploads ends, the
-// physical memory views are invalidated once, so the GPU reloads them.
+// written into guest memory while the GPU keeps rendering. Occasionally the
+// GPU's copy of a page missed a write (about one fight start in four in a
+// test loop): characters and arena parts stayed black/green, untextured or
+// recoloured until the next load, although guest memory was correct. The
+// write itself happens later than the upload call, so a few frames after a
+// burst of uploads ends the load-time memory and each uploaded texture are
+// invalidated, making the GPU reload them. Not all physical memory: that
+// also hit render targets and made the HUD flicker for a frame. The
+// texture is the wrapper's index (+0) into the device table at 0x825B3208
+// (1264-byte entries): mip count at +0x1C, mip addresses from +0x84.
 namespace {
+std::mutex texture_mutex;
+std::vector<std::pair<uint32_t,uint32_t>> texture_ranges;  // start, end
 std::atomic<unsigned> texture_uploads{0};
-void InvalidateGpuMemory() {
+void RecordTexture(uint8_t* base,uint32_t wrapper) {
+  const uint32_t index=REX_LOAD_U32(wrapper);
+  if(!index || index>4000)return;
+  const uint32_t entry=0x825B3208+(index-1)*1264;
+  const uint32_t mips=std::min<uint32_t>(REX_LOAD_U32(entry+0x1C),14);
+  uint32_t start=~0u,end=0;
+  for(uint32_t i=0;i<std::max<uint32_t>(mips,1);++i) {
+    const uint32_t address=REX_LOAD_U32(entry+0x84+i*4);
+    if(address<0xA0000000u)continue;
+    start=std::min(start,address);end=std::max(end,address+0x1000);
+  }
+  if(start>=end)return;
+  // Mip 0 alone (no smaller mips after it) still needs its full size.
+  end=uint32_t(std::max<uint64_t>(end,uint64_t(start)+uint64_t(REX_LOAD_U32(wrapper+12))*REX_LOAD_U32(wrapper+16)*4));
+  if(end-start>(8u<<20))return;
+  std::lock_guard lock(texture_mutex);
+  if(texture_ranges.size()<4096)texture_ranges.emplace_back(start,end);
+}
+void InvalidateTextures() {
+  std::vector<std::pair<uint32_t,uint32_t>> ranges;
+  {std::lock_guard lock(texture_mutex);ranges.swap(texture_ranges);}
   auto* memory=rex::system::kernel_memory();
   if(!memory)return;
-  for(const auto& [start,length]:{std::pair<uint32_t,uint32_t>{0xA0000000u,0x20000000u},
-                                  {0xC0000000u,0x20000000u},{0xE0000000u,0x1FFFF000u}})
+  // The GPU watches load-time data (textures, geometry) from 0xB0000000 and
+  // per-frame data (render targets) at 0xBE4xxxxx and above, measured in
+  // fights. Stale geometry also showed the fault, so after a real load (32+
+  // distinct textures: characters, arena) all load-time memory below
+  // 0xBE000000 is invalidated. Small bursts during a match (SET/READY/WINNER
+  // graphics) invalidate only their textures: reloading textures in use
+  // costs a frame without them, which made the HUD flicker.
+  std::sort(ranges.begin(),ranges.end());
+  ranges.erase(std::unique(ranges.begin(),ranges.end()),ranges.end());
+  if(ranges.size()>=32)
     memory->TriggerPhysicalMemoryCallbacks(rex::thread::global_critical_region::AcquireDirect(),
-                                           start,length,true,false);
+                                           0xA0000000u,0x1E000000u,true,false);
+  for(const auto& [start,end]:ranges)
+    memory->TriggerPhysicalMemoryCallbacks(rex::thread::global_critical_region::AcquireDirect(),
+                                           start,end-start,true,false);
 }
 }
 extern "C" REX_FUNC(__imp__sub_821433B8);
@@ -1198,12 +1237,14 @@ REX_HOOK_RAW(sub_821433B8) {  // once per frame
   static unsigned seen=0,quiet=0;
   const unsigned uploads=texture_uploads.load();
   if(uploads!=seen){seen=uploads;quiet=1;}
-  else if(quiet && ++quiet>3){quiet=0;InvalidateGpuMemory();}
+  else if(quiet && ++quiet>3){quiet=0;InvalidateTextures();}
   __imp__sub_821433B8(ctx,base);
 }
 REX_HOOK_RAW(sub_82199CB8) {
   using namespace vf2::panorama;
-  if(uint32_t(ctx.lr)==0x8213B5F4 || uint32_t(ctx.lr)==0x8213A848)++texture_uploads;
+  if(uint32_t(ctx.lr)==0x8213B5F4 || uint32_t(ctx.lr)==0x8213A848) {
+    RecordTexture(base,ctx.r3.u32);++texture_uploads;
+  }
   if(have_remapped_background && engine && REXCVAR_GET(vf2_background_bank_guard) &&
      ctx.r3.u32==REX_LOAD_U32(engine+0x118c04) && ctx.r4.u32==engine+0x100000) {
     std::array<uint8_t,32768-kBackgroundBankOffset> native;

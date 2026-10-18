@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Fixed HUD flicker (timer, health bars, SET/READY/WINNER) introduced by
+  the 1.3.2 colour fix: only texture memory is refreshed now, never render
+  targets, and outside loads only the textures that changed.
 - Launcher: the update notice uses the regular font and sits evenly
   between Play and the credits.
 
