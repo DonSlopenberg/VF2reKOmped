@@ -621,6 +621,16 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     RECT current;GetWindowRect(window,&current);
     SendMessageW(window,WM_DPICHANGED,MAKEWPARAM(actual,actual),reinterpret_cast<LPARAM>(&current));
   }
+  // Centre on the work area of its monitor (top-aligned if taller than it).
+  MONITORINFO monitor{sizeof(monitor)};
+  if(GetMonitorInfoW(MonitorFromWindow(window,MONITOR_DEFAULTTOPRIMARY),&monitor)) {
+    RECT r;GetWindowRect(window,&r);
+    const RECT& work=monitor.rcWork;
+    const int width=r.right-r.left,height=r.bottom-r.top;
+    const int x=work.left+std::max(0,int(work.right-work.left-width)/2);
+    const int y=work.top+std::max(0,int(work.bottom-work.top-height)/2);
+    SetWindowPos(window,nullptr,x,y,0,0,SWP_NOZORDER|SWP_NOSIZE|SWP_NOACTIVATE);
+  }
   ShowWindow(window, show);
   MSG message{};
   while (GetMessageW(&message, nullptr, 0, 0) > 0) {

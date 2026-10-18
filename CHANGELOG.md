@@ -6,6 +6,8 @@
   (for example a green beard, or a black fighter with green highlights) or
   missing/black textures from character select until the next load. The GPU
   now reloads texture memory once after each load.
+- Launcher opens centred on the screen instead of a cascaded position that
+  could be cut off by the taskbar.
 
 ## 1.3.1 (2026-10-18)
 
