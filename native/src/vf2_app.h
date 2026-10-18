@@ -21,6 +21,7 @@
 #include "vf2_settings.h"
 #include "vf2_display.h"
 #include "vf2_monitors.h"
+#include "launcher_config.h"
 
 class Vf2App : public rex::ReXApp {
  public:
@@ -84,6 +85,14 @@ class Vf2App : public rex::ReXApp {
     // Loading the module registers its resolution CVARs. Set them before
     // presentation/guest GPU setup, when render-target caches are created.
     if (!config.graphics) config.graphics = rex::system::LoadGpuPlugin(config.gpu_plugin);
+    // The GPU plugin registers swap_post_effect (antialiasing) only now, after
+    // vf2.toml was read, so apply the saved value from the file here.
+    if(rex::cvar::GetFlagSource("swap_post_effect")==rex::cvar::Source::kDefault) {
+      const auto saved=vf2::launcher::Read(settings_config_path_);
+      if(auto it=saved.find("swap_post_effect");it!=saved.end() &&
+         (it->second=="none" || it->second=="fxaa" || it->second=="fxaa_extreme"))
+        rex::cvar::SetFlagByName("swap_post_effect",it->second);
+    }
     if (rex::cvar::GetFlagSource("input_backend") == rex::cvar::Source::kDefault) {
       rex::cvar::SetFlagByName("input_backend", "xinput");
     }
@@ -266,7 +275,7 @@ class Vf2App : public rex::ReXApp {
     const int delay=setting("VF2_GPU_CAPTURE_DELAY_MS",0,0,120000);
     const int interval=setting("VF2_GPU_CAPTURE_INTERVAL_MS",3000,
         std::getenv("VF2_CAPTURE_FAST")?1:100,10000);
-    const int count=setting("VF2_GPU_CAPTURE_COUNT",120,1,200);
+    const int count=setting("VF2_GPU_CAPTURE_COUNT",120,1,2000);
     capture_thread_=std::jthread([presenter,output,delay,interval,count](std::stop_token stop) {
       std::filesystem::create_directories(output);
       for(int wait=0;wait<delay/100 && !stop.stop_requested();++wait)

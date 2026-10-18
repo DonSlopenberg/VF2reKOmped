@@ -1,5 +1,24 @@
 # Virtua Fighter 2 reKOmped Changelog
 
+## 1.3.1 (2026-10-18)
+
+- Esc pauses any match (Arcade, Local Versus, Custom Fight) for the side that
+  is playing, whatever mix of pads and keyboard is used.
+- Alternate costumes: the select screen keeps showing the normal costume, so
+  preview heads and portraits no longer flicker or lose colours when Up/Down
+  is pressed quickly; the chosen costume is applied when the fight starts.
+- Dural arenas: new seamless water wave on both arenas (smooth 128-tick
+  loop, no flicker, jumps or smeared rows when the camera tilts).
+- Antialiasing: Off / FXAA / FXAA Extreme, in the launcher and in F6.
+- F6: the first tab is now **VF2 reKOmped**; the window scales with small
+  game windows (Advanced tab included), opens at the top centre and always
+  stays reachable when dragged; the background FOV and offset sliders moved
+  down (**Background FOV & Offset**); internal background switches are no
+  longer shown.
+- Launcher: notice and link when a newer release is on GitHub; shows only
+  the game version; correct size when moved to a screen with another DPI;
+  clearer Random Arenas description.
+
 ## 1.3.0 (2026-10-18): 
 
 - Launcher: new **Arcade** section with Tourist, Random Opponents and Random

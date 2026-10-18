@@ -4,7 +4,8 @@
 param([Parameter(Mandatory)][string]$Work,[string]$Rar='',[string]$Stfs='')
 $ErrorActionPreference = 'Stop'
 $Root = Split-Path $PSScriptRoot -Parent
-$Zip = Get-ChildItem "$Root\dist\VF2reKOmped-*-windows-x64.zip" | Select-Object -First 1
+$Zip = Get-ChildItem "$Root\dist\VF2reKOmped-*-windows-x64.zip" | Sort-Object LastWriteTime | Select-Object -Last 1
+"testing $($Zip.Name)"
 $Reference = $Zip.FullName -replace '-windows-x64\.zip$', '-reference'
 if (-not $Rar) { $Rar = Join-Path $Root 'Virtua Fighter 2.rar' }
 if (-not $Stfs) { $Stfs = Join-Path $Root '65D8FAC10B21FA185AAB93607663594CB568C78658' }

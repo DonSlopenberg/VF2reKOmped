@@ -21,7 +21,7 @@ inline std::map<std::string,std::string> Read(const std::filesystem::path& path)
     if(key.empty() || key.front()=='#')continue;
     auto value=Trim(line.substr(eq+1));
     // Launcher-owned scalar values cannot contain a quoted '#'.
-    if(key=="vf2_output_resolution" || key=="resolution" || key=="fullscreen" || key=="vf2_no_intro" || key=="vf2_display_device" || key=="vf2_background_replacements" || key=="vf2_arcade_tourist" || key=="vf2_arcade_random_opponents" || key=="vf2_arcade_random_arenas") {
+    if(key=="vf2_output_resolution" || key=="resolution" || key=="fullscreen" || key=="vf2_no_intro" || key=="vf2_display_device" || key=="vf2_background_replacements" || key=="vf2_arcade_tourist" || key=="vf2_arcade_random_opponents" || key=="vf2_arcade_random_arenas" || key=="swap_post_effect") {
       value=Trim(value.substr(0,value.find('#')));
       if(value.size()>=2 && value.front()=='"' && value.back()=='"')value=value.substr(1,value.size()-2);
       if(key=="vf2_display_device") {std::string decoded;for(size_t i=0;i<value.size();++i){if(value[i]=='\\' && i+1<value.size())++i;decoded+=value[i];}value=decoded;}
@@ -33,7 +33,8 @@ inline std::map<std::string,std::string> Read(const std::filesystem::path& path)
 inline bool Save(const std::filesystem::path& path,const std::string& resolution,
                  bool fullscreen,bool skip_intro,const std::string& display_device={},
                  bool upscaled_backgrounds=false,bool tourist=false,
-                 bool random_opponents=false,bool random_arenas=false) {
+                 bool random_opponents=false,bool random_arenas=false,
+                 const std::string& post_effect={}) {
   std::map<std::string,std::string> changes={
       {"vf2_output_resolution","\""+resolution+"\""},
       {"fullscreen",fullscreen?"true":"false"},
@@ -42,6 +43,7 @@ inline bool Save(const std::filesystem::path& path,const std::string& resolution
       {"vf2_arcade_tourist",tourist?"true":"false"},
       {"vf2_arcade_random_opponents",random_opponents?"true":"false"},
       {"vf2_arcade_random_arenas",random_arenas?"true":"false"}};
+  if(!post_effect.empty())changes["swap_post_effect"]="\""+post_effect+"\"";
   if(!display_device.empty()) {std::string quoted="\"";for(char ch:display_device){if(ch=='\\' || ch=='"')quoted+='\\';quoted+=ch;}changes["vf2_display_device"]=quoted+'"';}
   std::ifstream input(path);std::ostringstream contents;std::string line;
   while(std::getline(input,line)) {

@@ -18,8 +18,8 @@ add_compile_options("-ffile-prefix-map=${VF2_REPO_ROOT}/=" "-ffile-prefix-map=${
 add_link_options("LINKER:/PDBALTPATH:%_PDB%")
 
 # Release versions shown in the launcher footer and stored in VERSIONINFO.
-set(VF2_GAME_VERSION 1.3.0)
-set(VF2_LAUNCHER_VERSION 1.3.0)
+set(VF2_GAME_VERSION 1.3.1)
+set(VF2_LAUNCHER_VERSION 1.3.1)
 foreach(part GAME LAUNCHER)
     string(REPLACE "." ";" parts "${VF2_${part}_VERSION}")
     list(GET parts 0 VF2_${part}_VERSION_MAJOR)
@@ -78,5 +78,5 @@ if(WIN32)
     target_compile_definitions(vf2_launcher PRIVATE VF2_BUILD_STAMP="${VF2_BUILD_STAMP}"
         VF2_REXGLUE_VERSION="${REXGLUE_VERSION_STRING}")
     target_link_options(vf2_launcher PRIVATE "LINKER:/MANIFESTINPUT:${CMAKE_CURRENT_SOURCE_DIR}/resources/launcher.manifest")
-    target_link_libraries(vf2_launcher PRIVATE user32 gdi32 xinput9_1_0 gdiplus ole32 dwmapi uxtheme comctl32 advapi32 version)
+    target_link_libraries(vf2_launcher PRIVATE user32 gdi32 xinput9_1_0 gdiplus ole32 dwmapi uxtheme comctl32 advapi32 version winhttp shell32)
 endif()

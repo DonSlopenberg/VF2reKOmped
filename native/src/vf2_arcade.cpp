@@ -154,17 +154,17 @@ bool DuralConfirm(unsigned user,bool start) {
 
 namespace {
 // Alternate costume at character select (Arcade and Versus). Up/Down toggles
-// it per side while selecting; on confirmation every ROM path tests the
-// held-input word 0x500700 (bit 13 side 1, bit 21 side 2) and adds the
-// native +13 costume offset, mirror rules included. Those tests read the bit
-// from the side's toggle instead; they also run on every cursor move, which
-// keeps the previewed fighter's costume current. The choice lasts until the
-// menus return.
+// it per side while selecting; the overlay marks the choice. The select
+// screen itself always previews the normal costume: its cursor paths test the
+// held-input word 0x500700 (bit 13 side 1, bit 21 side 2) and would add the
+// +13 costume offset, which the preview heads and palettes do not support,
+// so that bit is cleared. The chosen costume is written when the selection
+// ends (see CostumeInstruction). The choice lasts until the menus return.
 constexpr uint32_t kCostumeSide1[]={0x32158,0x322D0,0x32524,0x3269C,0x3281C,0x32998,0x32B4C,0x32D10,0x32E88,0x33008,0x33184,0x33338};
 constexpr uint32_t kCostumeSide2[]={0x32168,0x322E0,0x32534,0x326AC,0x3282C,0x329A8,0x32B5C,0x32D20,0x32E98,0x33018,0x33194,0x33348};
 std::array<std::atomic<bool>,2> alternate{};
 std::array<std::atomic<int>,2> select_slot{-1,-1};
-std::array<std::atomic<bool>,2> select_open{},costume_dirty{};
+std::array<std::atomic<bool>,2> select_open{},costume_touched{};
 void CostumeInstruction(uint8_t* base,uint32_t pc) {
   if(pc==0xC880) {  // select loop: cursor slot (+6) of both side tasks
     uint8_t* ram=Ram(base);
@@ -175,14 +175,28 @@ void CostumeInstruction(uint8_t* base,uint32_t pc) {
       const uint32_t flags=LE32(ram+task);
       select_slot[side].store(ram[task+6]);
       select_open[side].store((flags>>1)&1);  // bit 1: still choosing
-      // A toggle after the last cursor move updates the previewed fighter's
-      // costume directly (+0x1B0; 0..12 normal, +13 alternate).
-      const uint32_t fighter=LE32(ram+0x500804+side*4);
-      if(costume_dirty[side].exchange(false) && fighter>=0x500000 && fighter<0x580000) {
-        const uint8_t id=ram[fighter+0x1B0],character=id>=13?id-13:id;
-        ram[fighter+0x1B0]=uint8_t(character+(alternate[side].load()?13:0));
-      }
     }
+    return;
+  }
+  // Selection finished: before the CPU opponent is assigned (0xCE4C, its
+  // mirror check reads the player's costume) and at GAME_INT (0xD014), a side
+  // that toggled gets its chosen costume. Writing it during the select screen
+  // instead desynchronised the 3D preview head (colour flicker).
+  if(pc==0xCE4C || pc==0xD014) {
+    uint8_t* ram=Ram(base);
+    if(!ram || !(costume_touched[0].load() || costume_touched[1].load()))return;
+    uint8_t* id[2]{};
+    for(int side=0;side<2;++side) {
+      const uint32_t fighter=LE32(ram+0x500804+side*4);
+      if(fighter>=0x500000 && fighter<0x580000)id[side]=ram+fighter+0x1B0;
+    }
+    for(int side=0;side<2;++side) {
+      if(!id[side] || !costume_touched[side].load())continue;
+      const uint8_t character=*id[side]>=13?*id[side]-13:*id[side];
+      *id[side]=uint8_t(character+(alternate[side].load()?13:0));
+    }
+    if(id[0] && id[1] && *id[0]==*id[1])  // same character and costume: P2 gets the other one
+      *id[1]=*id[1]>=13?*id[1]-13:*id[1]+13;
     return;
   }
   if(pc<0x32158 || pc>0x33348)return;
@@ -192,12 +206,9 @@ void CostumeInstruction(uint8_t* base,uint32_t pc) {
       const uint32_t cpu=REX_LOAD_U32(0x82AB6754);
       if(!cpu)return;
       const uint32_t bit=side?1u<<21:1u<<13;
-      uint32_t r15=REX_LOAD_U32(cpu+60);
-      r15=alternate[side].load()?r15|bit:r15&~bit;
-      REX_STORE_U32(cpu+60,r15);
-      static int64_t logged[2]={};
-      if(NowMs()-logged[side]>1000){logged[side]=NowMs();
-        REXLOG_INFO("VF2 select: side {} confirmed with the {} costume",side+1,alternate[side].load()?"alternate":"normal");}
+      // The preview always uses the normal costume: an alternate ID (+13)
+      // during selection breaks the 3D preview heads and the palettes.
+      REX_STORE_U32(cpu+60,REX_LOAD_U32(cpu+60)&~bit);
       return;
     }
 }
@@ -209,7 +220,7 @@ void CostumeInput(unsigned user,uint16_t buttons) {
   const bool selecting=NowMs()-select_seen_ms.load()<100;
   if(!selecting || !select_open[user].load() || !(pressed&0x0003))return;  // D-pad up/down
   const bool value=!alternate[user].load();
-  alternate[user].store(value);costume_dirty[user].store(true);
+  alternate[user].store(value);costume_touched[user].store(true);
   REXLOG_INFO("VF2 select: side {} costume {}",user+1,value?"alternate":"normal");
 }
 SelectCostumes GetSelectCostumes() {
@@ -233,7 +244,7 @@ bool AchievementsBlocked(){return cheats_used.load();}
 
 void HostFrame(uint8_t* base,bool frontend) {
   if(frontend && locked)locked=false;
-  if(frontend)for(auto& a:alternate)a.store(false);
+  if(frontend){for(auto& a:alternate)a.store(false);for(auto& t:costume_touched)t.store(false);}
   // Automated tests only: VF2_CHEAT_TEST="p1 p2", VF2_HEALTH_TRACE=path.
   static const bool test_cheats=[] {
     if(const char* t=std::getenv("VF2_CHEAT_TEST"))

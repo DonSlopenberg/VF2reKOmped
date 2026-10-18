@@ -4,6 +4,14 @@
 #include "vf2_demo.h"
 #include "vf2_arcade.h"
 #include <rex/hook.h>
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#include <Xinput.h>
 #include <rex/logging.h>
 #include <rex/cvar.h>
 #include <rex/memory.h>
@@ -327,9 +335,37 @@ REX_HOOK_RAW(sub_82146690) {
 REX_HOOK_RAW(sub_82111858) {
   // The original generic pause path polls Back (0x100); Start is 0x200 in
   // the shipped XInput translation. Accept both for custom matches only.
-  if(vf2::fight::Active() && ctx.lr==0x821561E0 && ctx.r3.u32==256)
+  const bool pause_poll=ctx.lr==0x821561E0;
+  if(vf2::fight::Active() && pause_poll && ctx.r3.u32==256)
     ctx.r3.u64=256|512;
   __imp__sub_82111858(ctx,base);
+  // Esc pauses any match (Arcade, Versus, custom). The result is the user
+  // who owns the pause menu: the keyboard player (player 2 when player 1
+  // has a pad), otherwise player 1. Start is not used: in Arcade, Start on
+  // the side that is not playing means "new challenger".
+  if(pause_poll) {
+    static bool held=false;
+    DWORD process=0;GetWindowThreadProcessId(GetForegroundWindow(),&process);
+    bool down=process==GetCurrentProcessId() && (GetAsyncKeyState(VK_ESCAPE)&0x8000);
+    if(const char* test=std::getenv("VF2_TEST_ESC")) {  // test only: file content "1" = Esc held
+      std::ifstream in(test);int v=0;in>>v;down=v==1;
+    }
+    if(down && !held && ctx.r3.s32<0 && vf2::fight::MenuInput()==0 && !vf2::fight::SimulationFrozen()) {
+      // Owner: the only side in the game (0x500068 bit 2 = side 1 entered,
+      // bit 3 = side 2); with both sides in, the keyboard player.
+      XINPUT_STATE pad{};
+      int owner=XInputGetState(0,&pad)==ERROR_SUCCESS?1:0;
+      const uint32_t memory=REX_LOAD_U32(0x833BD428);
+      if(memory && memory<0xf0000000) {
+        const uint8_t entered=base[memory+0x500068];
+        const bool side[2]={bool(entered&4),bool(entered&8)};
+        if(side[0]!=side[1])owner=side[1]?1:0;
+      }
+      ctx.r3.s64=owner;
+      REXLOG_INFO("VF2 Esc: pause for player {}",ctx.r3.s32+1);
+    }
+    held=down;
+  }
 }
 
 REX_HOOK_RAW(sub_82186AD8) {

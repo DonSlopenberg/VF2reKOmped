@@ -13,12 +13,15 @@
 #include <uxtheme.h>
 #include <commctrl.h>
 #include <memory>
+#include <thread>
+#include <winhttp.h>
+#include <shellapi.h>
 #include "launcher_config.h"
 #include "vf2_monitors.h"
 #include "vf2_version.h"
 
 namespace {
-HWND resolutionBox, monitorBox, fullscreenBox, introBox, upscaledBox, touristBox, opponentsBox, arenasBox, controllerStatus, playButton;
+HWND resolutionBox, monitorBox, fullscreenBox, introBox, upscaledBox, aaBox, touristBox, opponentsBox, arenasBox, controllerStatus, playButton;
 std::vector<vf2::monitors::Display> monitors;
 size_t selectedMonitor=0;
 std::wstring MonitorLabel(size_t index) {
@@ -29,11 +32,14 @@ HFONT font, smallFont;
 HBRUSH backgroundBrush;
 COLORREF backgroundColor, textColor, mutedColor, accentColor;
 bool dark=false, loading=false;
+const char* aaValues[]={"none","fxaa","fxaa_extreme"};
+const wchar_t* aaLabels[]={L"Antialiasing: Off",L"Antialiasing: FXAA",L"Antialiasing: FXAA Extreme"};
 ULONG_PTR gdiplusToken;
 IStream* logoStream=nullptr;
 std::unique_ptr<Gdiplus::Bitmap> logo;
 UINT dpi = 96;
 int Scale(int pixels) { return MulDiv(pixels, dpi, 96); }
+RECT ClientBounds() { return {0,0,Scale(560),Scale(896)}; }
 std::filesystem::path folder;
 const wchar_t* presets[] = {L"1280x720", L"1920x1080", L"2560x1440", L"3840x2160", L"2560x1080", L"3440x1440"};
 const wchar_t* presetLabels[] = {L"1280 × 720  ·  HD", L"1920 × 1080  ·  Full HD", L"2560 × 1440  ·  QHD", L"3840 × 2160  ·  UHD",
@@ -60,6 +66,9 @@ void LoadSettings() {
   SendMessageW(touristBox,BM_SETCHECK,value("vf2_arcade_tourist","false")=="true"?BST_CHECKED:BST_UNCHECKED,0);
   SendMessageW(opponentsBox,BM_SETCHECK,value("vf2_arcade_random_opponents","false")=="true"?BST_CHECKED:BST_UNCHECKED,0);
   SendMessageW(arenasBox,BM_SETCHECK,value("vf2_arcade_random_arenas","false")=="true"?BST_CHECKED:BST_UNCHECKED,0);
+  {const auto effect=value("swap_post_effect","none");int aa=0;
+   for(int i=0;i<3;++i)if(effect==aaValues[i])aa=i;
+   SendMessageW(aaBox,CB_SETCURSEL,aa,0);}
   loading=false;
 }
 bool SaveSettings(HWND parent) {
@@ -73,7 +82,8 @@ bool SaveSettings(HWND parent) {
       SendMessageW(upscaledBox,BM_GETCHECK,0,0)==BST_CHECKED,
       SendMessageW(touristBox,BM_GETCHECK,0,0)==BST_CHECKED,
       SendMessageW(opponentsBox,BM_GETCHECK,0,0)==BST_CHECKED,
-      SendMessageW(arenasBox,BM_GETCHECK,0,0)==BST_CHECKED))return true;
+      SendMessageW(arenasBox,BM_GETCHECK,0,0)==BST_CHECKED,
+      aaValues[std::clamp(int(SendMessageW(aaBox,CB_GETCURSEL,0,0)),0,2)]))return true;
   MessageBoxW(parent,L"Could not save game settings. Check that the game folder is writable.",L"Virtua Fighter 2 reKOmped",MB_ICONERROR);
   return false;
 }
@@ -92,7 +102,7 @@ void Theme(HWND window) {
   if(backgroundBrush)DeleteObject(backgroundBrush);
   backgroundBrush=CreateSolidBrush(backgroundColor);
   BOOL enabled=dark;DwmSetWindowAttribute(window,20,&enabled,sizeof(enabled));
-  for(HWND control:{resolutionBox,monitorBox,fullscreenBox,introBox,upscaledBox,touristBox,opponentsBox,arenasBox,playButton})
+  for(HWND control:{resolutionBox,monitorBox,fullscreenBox,introBox,upscaledBox,aaBox,touristBox,opponentsBox,arenasBox,playButton})
     if(control)SetWindowTheme(control,dark?L"DarkMode_Explorer":L"Explorer",nullptr);
   RedrawWindow(window,nullptr,nullptr,RDW_INVALIDATE|RDW_ALLCHILDREN|RDW_ERASE);
 }
@@ -153,6 +163,60 @@ std::string GameVersion() {
   }
   return cached;
 }
+// Update check: the latest release tag of the GitHub repository, fetched once
+// in the background. Only a notice is shown; nothing is downloaded.
+constexpr UINT kUpdateFound=WM_APP+1;
+constexpr wchar_t kReleasesPage[]=L"https://github.com/DonSlopenberg/VF2reKOmped/releases/latest";
+std::wstring updateText;
+RECT updateRect{};
+std::vector<int> ParseVersion(const std::string& text) {
+  std::vector<int> parts;int value=-1;
+  for(char c:text) {
+    if(c>='0' && c<='9'){value=(value<0?0:value*10)+(c-'0');}
+    else if(c=='.' && value>=0){parts.push_back(value);value=-1;}
+    else if(value>=0)break;
+  }
+  if(value>=0)parts.push_back(value);
+  return parts;
+}
+void CheckForUpdate(HWND window,std::string installed) {
+  std::thread([window,installed]{
+    std::string body;
+    if(HINTERNET session=WinHttpOpen(L"VF2reKOmped-launcher",WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY,WINHTTP_NO_PROXY_NAME,WINHTTP_NO_PROXY_BYPASS,0)) {
+      WinHttpSetTimeouts(session,3000,3000,3000,3000);
+      if(HINTERNET connection=WinHttpConnect(session,L"api.github.com",INTERNET_DEFAULT_HTTPS_PORT,0)) {
+        std::wstring path=L"/repos/DonSlopenberg/VF2reKOmped/releases/latest";
+        if(const wchar_t* test=_wgetenv(L"VF2_LAUNCHER_UPDATE_REPO"))path=L"/repos/"+std::wstring(test)+L"/releases/latest";  // test only
+        if(HINTERNET request=WinHttpOpenRequest(connection,L"GET",path.c_str(),
+               nullptr,WINHTTP_NO_REFERER,WINHTTP_DEFAULT_ACCEPT_TYPES,WINHTTP_FLAG_SECURE)) {
+          DWORD status=0,size=sizeof(status);
+          if(WinHttpSendRequest(request,L"Accept: application/vnd.github+json\r\n",DWORD(-1),WINHTTP_NO_REQUEST_DATA,0,0,0) &&
+             WinHttpReceiveResponse(request,nullptr) &&
+             WinHttpQueryHeaders(request,WINHTTP_QUERY_STATUS_CODE|WINHTTP_QUERY_FLAG_NUMBER,WINHTTP_HEADER_NAME_BY_INDEX,&status,&size,WINHTTP_NO_HEADER_INDEX) &&
+             status==200) {
+            for(DWORD available=0;WinHttpQueryDataAvailable(request,&available) && available && body.size()<1<<20;) {
+              std::string chunk(available,'\0');DWORD read=0;
+              if(!WinHttpReadData(request,chunk.data(),available,&read) || !read)break;
+              body.append(chunk.data(),read);
+            }
+          }
+          WinHttpCloseHandle(request);
+        }
+        WinHttpCloseHandle(connection);
+      }
+      WinHttpCloseHandle(session);
+    }
+    const auto key=body.find("\"tag_name\"");
+    if(key==std::string::npos)return;
+    const auto open=body.find('"',body.find(':',key)+1),close=open==std::string::npos?open:body.find('"',open+1);
+    if(close==std::string::npos)return;
+    const std::string tag=body.substr(open+1,close-open-1);
+    const auto latest=ParseVersion(tag),current=ParseVersion(installed);
+    if(latest.empty() || current.empty() || !(current<latest))return;
+    auto* text=new std::wstring(L"Update available: "+std::wstring(tag.begin(),tag.end())+L"  -  open the releases page");
+    if(!PostMessageW(window,kUpdateFound,0,reinterpret_cast<LPARAM>(text)))delete text;
+  }).detach();
+}
 void PaintContent(HDC dc) {
   if(logo) {
     Gdiplus::Graphics graphics(dc);
@@ -162,13 +226,19 @@ void PaintContent(HDC dc) {
     graphics.DrawImage(logo.get(),Scale(32),Scale(16),Scale(496),Scale(height));
   }
   SetBkMode(dc,TRANSPARENT);SetTextColor(dc,mutedColor);SelectObject(dc,font);
-  RECT edition{Scale(32),Scale(262),Scale(528),Scale(286)};
+  RECT edition{Scale(32),Scale(254),Scale(528),Scale(276)};
   DrawTextW(dc,L"2012 Xbox360 Live Arcade Edition",-1,&edition,DT_CENTER|DT_SINGLELINE|DT_VCENTER);
   SetBkMode(dc,TRANSPARENT);SetTextColor(dc,mutedColor);SelectObject(dc,smallFont);
-  RECT credits{Scale(32),Scale(808),Scale(528),Scale(828)};
+  if(!updateText.empty()) {
+    updateRect={Scale(32),Scale(810),Scale(528),Scale(832)};
+    SetTextColor(dc,accentColor);
+    DrawTextW(dc,updateText.c_str(),-1,&updateRect,DT_CENTER|DT_SINGLELINE|DT_VCENTER|DT_END_ELLIPSIS);
+    SetTextColor(dc,mutedColor);
+  }
+  RECT credits{Scale(32),Scale(838),Scale(528),Scale(858)};
   DrawTextW(dc,L"Created by Sol, Opus and Don Slopenberg",-1,&credits,DT_CENTER|DT_SINGLELINE|DT_VCENTER);
-  RECT footer{Scale(16),Scale(830),Scale(544),Scale(852)};
-  std::string build="Launcher " VF2_LAUNCHER_VERSION_TEXT "  |  Game "+GameVersion()+"  |  ReXGlue SDK " VF2_REXGLUE_VERSION
+  RECT footer{Scale(16),Scale(860),Scale(544),Scale(882)};
+  std::string build="Version "+GameVersion()+"  |  ReXGlue SDK " VF2_REXGLUE_VERSION
                     "  |  Build " VF2_BUILD_STAMP;
   std::wstring label(build.begin(),build.end());
   DrawTextW(dc,label.c_str(),-1,&footer,DT_CENTER|DT_SINGLELINE|DT_VCENTER|DT_END_ELLIPSIS);
@@ -209,6 +279,8 @@ void PaintResolution(HWND control,HDC dc) {
   SelectObject(dc,font);SetTextColor(dc,textColor);SetBkMode(dc,TRANSPARENT);
   if(control==monitorBox && selected>=0 && size_t(selected)<monitors.size())
     DrawTextW(dc,MonitorLabel(selected).c_str(),-1,&text,DT_SINGLELINE|DT_VCENTER|DT_END_ELLIPSIS);
+  else if(control==aaBox && selected>=0 && selected<3)
+    DrawTextW(dc,aaLabels[selected],-1,&text,DT_SINGLELINE|DT_VCENTER);
   else if(control==resolutionBox && selected>=0 && selected<presetCount)
     DrawTextW(dc,presetLabels[selected],-1,&text,DT_SINGLELINE|DT_VCENTER);
   const int x=area.right-Scale(18),y=area.bottom/2;
@@ -320,7 +392,7 @@ void ControllerNavigation(HWND window) {
   if (GetForegroundWindow() != window) return;
   std::vector<HWND> controls;
   if(monitorBox)controls.push_back(monitorBox);
-  controls.insert(controls.end(),{resolutionBox,fullscreenBox,introBox,upscaledBox,touristBox,opponentsBox,arenasBox,playButton});
+  controls.insert(controls.end(),{resolutionBox,fullscreenBox,introBox,upscaledBox,aaBox,touristBox,opponentsBox,arenasBox,playButton});
   HWND focused = GetFocus();
   int index = 0;
   const int count=int(controls.size());
@@ -328,9 +400,9 @@ void ControllerNavigation(HWND window) {
   if (pressed & XINPUT_GAMEPAD_DPAD_UP) SetFocus(controls[(index+count-1)%count]);
   if (pressed & XINPUT_GAMEPAD_DPAD_DOWN) SetFocus(controls[(index+1)%count]);
   if (pressed & (XINPUT_GAMEPAD_DPAD_LEFT | XINPUT_GAMEPAD_DPAD_RIGHT)) {
-    if (focused == resolutionBox || focused==monitorBox) {
+    if (focused == resolutionBox || focused==monitorBox || focused==aaBox) {
       int selected = int(SendMessageW(focused, CB_GETCURSEL, 0, 0));
-      const int maximum=focused==monitorBox?int(monitors.size())-1:presetCount-1;
+      const int maximum=focused==monitorBox?int(monitors.size())-1:focused==aaBox?2:presetCount-1;
       selected = std::clamp(selected + ((pressed & XINPUT_GAMEPAD_DPAD_RIGHT) ? 1 : -1),0,maximum);
       SendMessageW(focused, CB_SETCURSEL, selected, 0);
       if(focused==monitorBox)selectedMonitor=size_t(selected);
@@ -380,13 +452,17 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM w, LPARAM l) {
       introBox=Control(window,L"BUTTON",L"Skip Startup Logos",BS_AUTOCHECKBOX|WS_TABSTOP,
           270,427,258,28,104);
       upscaledBox=Control(window,L"BUTTON",L"Upscaled 2D Backgrounds",BS_AUTOCHECKBOX|WS_TABSTOP,
-          32,460,496,28,106);
+          32,460,238,28,106);
+      aaBox=Control(window,L"COMBOBOX",L"",CBS_DROPDOWNLIST|CBS_OWNERDRAWFIXED|CBS_HASSTRINGS|WS_TABSTOP,
+          270,456,258,140,110);
+      for(const auto label:aaLabels)SendMessageW(aaBox,CB_ADDSTRING,0,reinterpret_cast<LPARAM>(label));
+      SetWindowSubclass(aaBox,ResolutionProc,1,0);
       Control(window,L"STATIC",L"ARCADE",0,32,504,496,22);
       touristBox=Control(window,L"BUTTON",L"Tourist - Easy Mode is now REALLY merciful",BS_AUTOCHECKBOX|WS_TABSTOP,
           32,530,496,28,107);
       opponentsBox=Control(window,L"BUTTON",L"Random Opponents - new order every run, Dural last",BS_AUTOCHECKBOX|WS_TABSTOP,
           32,563,496,28,108);
-      arenasBox=Control(window,L"BUTTON",L"Random Arenas - no arena twice in a run",BS_AUTOCHECKBOX|WS_TABSTOP,
+      arenasBox=Control(window,L"BUTTON",L"Random Arenas - arenas no longer tied to opponents",BS_AUTOCHECKBOX|WS_TABSTOP,
           32,596,496,28,109);
       for(HWND toggle:{fullscreenBox,introBox,upscaledBox,touristBox,opponentsBox,arenasBox})SetWindowSubclass(toggle,ToggleProc,1,0);
       controllerStatus = Control(window, L"STATIC", L"", 0, 32, 636, 496, 40);
@@ -396,6 +472,7 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM w, LPARAM l) {
       playButton = Control(window, L"BUTTON", L"Play", BS_OWNERDRAW | WS_TABSTOP,
           32, 716, 496, 48, 103);
       LoadSettings();Theme(window);
+      {static bool checked=false;if(!checked){checked=true;CheckForUpdate(window,GameVersion());}}
       RefreshPads();
       SetTimer(window, 1, 1000, nullptr);
       SetTimer(window, 2, 33, nullptr);
@@ -428,13 +505,14 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM w, LPARAM l) {
       PaintContent(reinterpret_cast<HDC>(w));return 0;
     case WM_DRAWITEM: {
       const auto* draw=reinterpret_cast<DRAWITEMSTRUCT*>(l);
-      if(draw->CtlID==101 || draw->CtlID==105) {
+      if(draw->CtlID==101 || draw->CtlID==105 || draw->CtlID==110) {
         const auto brush=CreateSolidBrush((draw->itemState&ODS_SELECTED)?accentColor:backgroundColor);
         FillRect(draw->hDC,&draw->rcItem,brush);DeleteObject(brush);
         SetTextColor(draw->hDC,(draw->itemState&ODS_SELECTED)?RGB(255,255,255):textColor);
         SetBkMode(draw->hDC,TRANSPARENT);SelectObject(draw->hDC,font);
         RECT text=draw->rcItem;text.left+=Scale(10);
         if(draw->CtlID==105 && draw->itemID<monitors.size())DrawTextW(draw->hDC,MonitorLabel(draw->itemID).c_str(),-1,&text,DT_SINGLELINE|DT_VCENTER|DT_END_ELLIPSIS);
+        else if(draw->CtlID==110 && draw->itemID<3)DrawTextW(draw->hDC,aaLabels[draw->itemID],-1,&text,DT_SINGLELINE|DT_VCENTER);
         else if(draw->CtlID==101 && draw->itemID<UINT(presetCount))DrawTextW(draw->hDC,presetLabels[draw->itemID],-1,&text,DT_SINGLELINE|DT_VCENTER);
         return TRUE;
       }
@@ -453,14 +531,19 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM w, LPARAM l) {
     }
     case WM_MEASUREITEM: {
       auto* measure=reinterpret_cast<MEASUREITEMSTRUCT*>(l);
-      if(measure->CtlID==101 || measure->CtlID==105){measure->itemHeight=Scale(30);return TRUE;}
+      if(measure->CtlID==101 || measure->CtlID==105 || measure->CtlID==110){measure->itemHeight=Scale(30);return TRUE;}
       break;
     }
     case WM_DPICHANGED: {
       // Recreate controls at the target monitor DPI, preserving on-disk choices.
       dpi=HIWORD(w);SaveSettings(window);
+      // Size from the layout at the new DPI (the suggested rectangle only
+      // scales the old outer size, which cut the client area off); keep the
+      // suggested position.
       const auto rect=reinterpret_cast<RECT*>(l);
-      SetWindowPos(window,nullptr,rect->left,rect->top,rect->right-rect->left,rect->bottom-rect->top,SWP_NOZORDER|SWP_NOACTIVATE);
+      RECT bounds=ClientBounds();
+      AdjustWindowRectExForDpi(&bounds,DWORD(GetWindowLongPtrW(window,GWL_STYLE)),FALSE,DWORD(GetWindowLongPtrW(window,GWL_EXSTYLE)),dpi);
+      SetWindowPos(window,nullptr,rect->left,rect->top,bounds.right-bounds.left,bounds.bottom-bounds.top,SWP_NOZORDER|SWP_NOACTIVATE);
       // Fixed layout keeps text and controls aligned at any monitor scaling.
       HWND child=GetWindow(window,GW_CHILD);
       while(child){HWND next=GetWindow(child,GW_HWNDNEXT);DestroyWindow(child);child=next;}
@@ -468,6 +551,22 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM w, LPARAM l) {
       DeleteObject(font);DeleteObject(smallFont);
       return WindowProc(window,WM_CREATE,0,0);
     }
+    case kUpdateFound: {
+      std::unique_ptr<std::wstring> text(reinterpret_cast<std::wstring*>(l));
+      updateText=*text;InvalidateRect(window,nullptr,FALSE);return 0;
+    }
+    case WM_LBUTTONUP: {
+      const POINT point{short(LOWORD(l)),short(HIWORD(l))};
+      if(!updateText.empty() && PtInRect(&updateRect,point))
+        ShellExecuteW(window,L"open",kReleasesPage,nullptr,nullptr,SW_SHOWNORMAL);
+      return 0;
+    }
+    case WM_SETCURSOR:
+      if(!updateText.empty()) {
+        POINT point;GetCursorPos(&point);ScreenToClient(window,&point);
+        if(PtInRect(&updateRect,point)){SetCursor(LoadCursorW(nullptr,IDC_HAND));return TRUE;}
+      }
+      break;
     case WM_TIMER:
       if (w == 1) RefreshPads();
       else if (w == 2) ControllerNavigation(window);
@@ -476,7 +575,7 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM w, LPARAM l) {
     case WM_COMMAND:
       // The launcher's job ends once the game process exists.
       if (LOWORD(w) == 103 && HIWORD(w) == BN_CLICKED && StartGame(window)) DestroyWindow(window);
-      else if((LOWORD(w)==101 && HIWORD(w)==CBN_SELCHANGE) ||
+      else if(((LOWORD(w)==101 || LOWORD(w)==110) && HIWORD(w)==CBN_SELCHANGE) ||
               ((LOWORD(w)==102 || LOWORD(w)==104 || (LOWORD(w)>=106 && LOWORD(w)<=109)) && HIWORD(w)==BN_CLICKED))SaveSettings(window);
       else if(LOWORD(w)==105 && HIWORD(w)==CBN_SELCHANGE) {
         const int selected=int(SendMessageW(monitorBox,CB_GETCURSEL,0,0));
@@ -510,13 +609,18 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
   wc.hCursor = LoadCursorW(nullptr, IDC_ARROW);
   wc.hIcon=LoadIconW(instance,MAKEINTRESOURCEW(1));
   RegisterClassW(&wc);
-  RECT bounds{0,0,Scale(560),Scale(866)};
+  RECT bounds=ClientBounds();
   const DWORD style=WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX;
   AdjustWindowRectExForDpi(&bounds,style,FALSE,0,dpi);
   HWND window = CreateWindowW(wc.lpszClassName, L"Virtua Fighter 2 reKOmped",
       style,CW_USEDEFAULT,CW_USEDEFAULT,bounds.right-bounds.left,bounds.bottom-bounds.top,
       nullptr,nullptr,instance,nullptr);
   if (!window) return 1;
+  // Opened on a monitor whose DPI differs from the system DPI: lay out again.
+  if(const UINT actual=GetDpiForWindow(window);actual && actual!=dpi) {
+    RECT current;GetWindowRect(window,&current);
+    SendMessageW(window,WM_DPICHANGED,MAKEWPARAM(actual,actual),reinterpret_cast<LPARAM>(&current));
+  }
   ShowWindow(window, show);
   MSG message{};
   while (GetMessageW(&message, nullptr, 0, 0) > 0) {

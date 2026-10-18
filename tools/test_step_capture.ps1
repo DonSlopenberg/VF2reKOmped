@@ -15,7 +15,7 @@ $arguments="--game_data_root `"$Install\data\game`" --user_data_root `"$Out\user
 # Captures start when the script creates the capture trigger below; the
 # capture thread's delay is fixed at launch, so use a long delay and count.
 $env:VF2_GPU_CAPTURE="$Out\captures"; $env:VF2_CAPTURE_FAST='1'
-$env:VF2_GPU_CAPTURE_INTERVAL_MS="$($StepMs/2)"; $env:VF2_GPU_CAPTURE_COUNT='200'
+$env:VF2_GPU_CAPTURE_INTERVAL_MS="$($StepMs/2)"; $env:VF2_GPU_CAPTURE_COUNT="$([Math]::Max(200,($Steps+4)*2+40))"
 try {$process=Start-Process "$Install\data\engine\vf2.exe" -WorkingDirectory "$Install\data\engine" -ArgumentList $arguments -WindowStyle Hidden -PassThru}
 finally {Remove-Item Env:VF2_CUSTOM_FIGHT_TEST,Env:VF2_STEP_TEST,Env:VF2_GPU_CAPTURE,Env:VF2_CAPTURE_FAST,Env:VF2_GPU_CAPTURE_INTERVAL_MS,Env:VF2_GPU_CAPTURE_COUNT}
 $watch=[Diagnostics.Stopwatch]::StartNew()

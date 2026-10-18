@@ -6,6 +6,7 @@
 #include "vf2_fight.h"
 #include "vf2_demo.h"
 #include "vf2_freelook.h"
+#include "vf2_interpolation.h"
 #include <rex/hook.h>
 #include <rex/cvar.h>
 #include <rex/logging.h>
@@ -1122,6 +1123,33 @@ REX_HOOK_RAW(sub_821445B0) { Composite(ctx,base,__imp__sub_821445B0,0); }
 REX_HOOK_RAW(sub_82188AB0) {
   const uint32_t layer=ctx.r3.u32,source=ctx.r4.u32,destination=ctx.r5.u32,count=ctx.r6.u32;
   __imp__sub_82188AB0(ctx,base);
+  // Dural's arenas (10 boss, 11 versus): the native water wave alternates two
+  // opposite waves on even/odd lines and ticks, made for a CRT. With the
+  // widened panorama the table is replaced by one smooth wave of the same
+  // amplitude and 128-tick period, a function of panorama row and time, so
+  // it loops seamlessly. No other processing applies to these backgrounds.
+  if((layer==1 || layer==3) && count<=512 && vf2::panorama::last_pass_panorama) {
+    const uint32_t memory=REX_LOAD_U32(0x833BD428);
+    const uint8_t arena=memory && memory<0xf0000000 ? base[memory+0x500064] : 0xFF;
+    if(arena==10 || arena==11) {
+      constexpr double kPi=3.14159265358979323846;
+      constexpr double kAmplitude=3.5,kWavelength=112.0,kPeriod=128.0;  // source px, rows, ticks
+      const double time=std::fmod(double(REX_LOAD_U32(0x82E7E38C))+vf2::render::Alpha(),kPeriod);
+      for(uint32_t i=0;i<count;++i) {
+        const double v=kAmplitude*std::sin(2*kPi*(double(i)/kWavelength-time/kPeriod));
+        REX_STORE_U16(destination+i*2,uint16_t(int16_t(std::lround(v))));
+      }
+      for(int i=vf2::panorama::kSwatchRow;i<vf2::panorama::kSwatchRow+2 && i<int(count);++i)REX_STORE_U16(destination+i*2,0);
+      if(layer==1) {
+        using namespace vf2::panorama;
+        line_offsets.fill(0);
+        for(uint32_t i=0;i<count;++i)line_offsets[i]=int16_t(REX_LOAD_U16(destination+i*2));
+        line_offsets_frame=frame;line_offsets_valid=true;
+      }
+      ctx.r3.u64=1;  // changed: upload every frame, the wave moves continuously
+      return;
+    }
+  }
   // The native copy indexes the table by screen line: dst[i]=src[(i+vscroll)
   // &511]. The widened renderer decodes the panorama with map row = canvas
   // line (no vertical scroll), so it needs dst[i]=src[i]. Using the native

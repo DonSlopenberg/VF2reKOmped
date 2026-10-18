@@ -70,7 +70,7 @@ Start **Virtua Fighter 2.exe**. Settings are saved immediately to
 | Upscaled 2D Backgrounds | Uses the upscaled arena panoramas |
 | Tourist | Below Easy: every CPU opponent stays at a constant, gentle level |
 | Random Opponents | New opponent order every Arcade run, Dural always last |
-| Random Arenas | Every Arcade stage on a random arena, no repeats |
+| Random Arenas | Arenas are no longer tied to opponents: every stage gets a random one, no repeats |
 
 Random options are not used in Ranking Mode. They do not affect achievements.
 
@@ -84,10 +84,11 @@ uses the same settings, saves and log (`data/logs/game.log`).
 | F4 | Fullscreen / windowed |
 | F6 | Settings and Custom Fight Launcher (pauses the game) |
 | F7 | Achievements |
+| Esc | Pause the match (Arcade, Versus, Custom Fight) |
 
 **F6 Settings**
 
-- *Display*: resolution, background FOV, horizon height, background blur and
+- *VF2 reKOmped* / *Display*: resolution, background FOV, horizon height, background blur and
   smoothing, upscaled backgrounds.
 - *Arcade & Cheats*: Random Opponents, Random Arenas, Tourist difficulty,
   hidden Dural, Infinite Health P1/P2. Using a cheat disables achievements

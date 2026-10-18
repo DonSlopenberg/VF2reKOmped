@@ -65,3 +65,6 @@ dist/
 analysis/*
 !analysis/*.md
 native/userdata/
+
+# Local scratch folder
+/random_trash/

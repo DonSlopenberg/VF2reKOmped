@@ -72,18 +72,24 @@ class SettingsDialog final : public rex::ui::SettingsDialog {
  protected:
   void OnDraw(ImGuiIO& io) override {
     if(!open_)return;
-    ImGui::SetNextWindowSize(ImVec2(std::min(920.0f,io.DisplaySize.x*0.92f),
-                                   std::min(740.0f,io.DisplaySize.y*0.90f)),ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x*0.5f,io.DisplaySize.y*0.5f),
-                           ImGuiCond_FirstUseEver,ImVec2(0.5f,0.5f));
+    // Small game windows: shrink the whole interface so it fits (never enlarged).
+    const float scale=UiScale(io);
+    ImGui::SetNextWindowSize(ImVec2(std::min(920.0f*scale,io.DisplaySize.x*0.94f),
+                                   std::min(740.0f*scale,io.DisplaySize.y*0.94f)),ImGuiCond_Appearing);
+    // Opens at the top centre; it can be dragged but is kept on screen.
+    ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x*0.5f,io.DisplaySize.y*0.03f),
+                           ImGuiCond_Appearing,ImVec2(0.5f,0.0f));
+    // Text of every section, the SDK's Advanced tab included, follows the scale.
+    ImGui::PushFont(nullptr,ImGui::GetStyle().FontSizeBase*scale);
     // Multiple Begin calls append to one ImGui window in the same frame.
     // This is the SDK's existing window identity, rather than a second dialog.
     if(ImGui::Begin("Settings##rex",&open_,ImGuiWindowFlags_NoCollapse)) {
+      KeepOnScreen(io);
       if(ImGui::Button("Custom Fight Launcher..."))launcher_open_=true;
       ImGui::SameLine();
       ImGui::TextDisabled("F6: return here at any time");
       if(ImGui::BeginTabBar("Settings sections")) {
-        if(ImGui::BeginTabItem("VF2")) {
+        if(ImGui::BeginTabItem("VF2 reKOmped")) {
           if(ImGui::BeginTabBar("VF2 sections")) {
             if(ImGui::BeginTabItem("Display")) {
               DrawDisplay();ImGui::EndTabItem();
@@ -105,10 +111,11 @@ class SettingsDialog final : public rex::ui::SettingsDialog {
       }
     }
     ImGui::End();
-    if(!open_){launcher_open_=false;fight::SetSettingsOpen(false);return;}
+    if(!open_){ImGui::PopFont();launcher_open_=false;fight::SetSettingsOpen(false);return;}
     DrawLauncher(io);
+    if(open_ && draw_advanced_)rex::ui::SettingsDialog::OnDraw(io);
+    ImGui::PopFont();
     if(!open_)return;
-    if(draw_advanced_)rex::ui::SettingsDialog::OnDraw(io);
     std::error_code error;
     const auto written=std::filesystem::last_write_time(config_path_,error);
     if(!error && written!=last_write_) {
@@ -117,6 +124,18 @@ class SettingsDialog final : public rex::ui::SettingsDialog {
     }
   }
  private:
+  // The windows are laid out for about 960x780 interface units; below that
+  // everything (text, widgets, fixed widths) shrinks proportionally.
+  // Dragging is allowed, but the title bar always stays reachable.
+  static void KeepOnScreen(const ImGuiIO& io) {
+    const ImVec2 pos=ImGui::GetWindowPos(),size=ImGui::GetWindowSize();
+    const float keep=80.0f;
+    const ImVec2 fixed(std::clamp(pos.x,keep-size.x,io.DisplaySize.x-keep),std::clamp(pos.y,0.0f,io.DisplaySize.y-ImGui::GetFrameHeight()*1.5f));
+    if(fixed.x!=pos.x || fixed.y!=pos.y)ImGui::SetWindowPos(fixed);
+  }
+  static float UiScale(const ImGuiIO& io) {
+    return std::clamp(std::min(io.DisplaySize.x/960.0f,io.DisplaySize.y/780.0f),0.45f,1.0f);
+  }
   void DrawDisplay() {
       const char* resolutions[]={"1280x720 (HD)","1920x1080 (Full HD)","2560x1440 (QHD)","3840x2160 (UHD)",
                                  "2560x1080 (Ultrawide 21:9)","3440x1440 (Ultrawide QHD 21:9)"};
@@ -125,16 +144,39 @@ class SettingsDialog final : public rex::ui::SettingsDialog {
       const auto requested=rex::cvar::GetFlagByName("vf2_output_resolution");
       int selected=-1;
       for(int i=0;i<count;++i)if(requested==values[i])selected=i;
-      ImGui::SetNextItemWidth(300);
+      ImGui::SetNextItemWidth(300*UiScale(ImGui::GetIO()));
       if(ImGui::Combo("Resolution",&selected,resolutions,count))
         rex::cvar::SetFlagByName("vf2_output_resolution",values[selected]);
       ImGui::TextDisabled("Active rendering: %d x %d",display::output.width,display::output.height);
       if(requested!=std::to_string(display::output.width)+"x"+std::to_string(display::output.height))
         ImGui::TextUnformatted("Resolution change requires restarting the game.");
+      {
+        // SDK presentation post effect (applied to the final image).
+        const char* labels[]={"Off","FXAA","FXAA Extreme"};  // same choices as the launcher
+        const char* values[]={"none","fxaa","fxaa_extreme"};
+        const auto current=rex::cvar::GetFlagByName("swap_post_effect");
+        int aa=0;for(int i=0;i<3;++i)if(current==values[i])aa=i;
+        ImGui::SetNextItemWidth(300*UiScale(ImGui::GetIO()));
+        if(ImGui::Combo("Antialiasing",&aa,labels,3))rex::cvar::SetFlagByName("swap_post_effect",values[aa]);
+      }
+      ImGui::Separator();
+      ImGui::TextUnformatted("Background");
+      Toggle("Smooth Scroll (subpixel background)","vf2_background_smooth_scroll");
+      Toggle("Smooth interlaced water wave","vf2_background_wave_smooth");
+      Toggle("Smooth background filtering (off = pixelated)","vf2_background_linear_composite");
+      {
+        int blur=std::stoi(rex::cvar::GetFlagByName("vf2_background_blur"));
+        const char* names[]={"Off","Soft (2x)","Medium (4x)","Strong (8x)"};
+        ImGui::SetNextItemWidth(300*UiScale(ImGui::GetIO()));
+        if(ImGui::SliderInt("Background blur",&blur,0,3,names[std::clamp(blur,0,3)],ImGuiSliderFlags_AlwaysClamp))
+          rex::cvar::SetFlagByName("vf2_background_blur",std::to_string(blur));
+      }
+      Toggle("Smooth static bitmap screens (high-score entry)","vf2_background_static_smooth");
+      Toggle("Upscaled arena backgrounds (textures/replacements/arenas)","vf2_background_replacements");
       ImGui::Separator();
       float fov=std::stof(rex::cvar::GetFlagByName("vf2_background_fov"));
-      ImGui::TextUnformatted("Panoramic Background");
-      ImGui::SetNextItemWidth(std::max(180.0f,ImGui::GetContentRegionAvail().x-190.0f));
+      ImGui::TextUnformatted("Background FOV & Offset");
+      ImGui::SetNextItemWidth(std::max(180.0f*UiScale(ImGui::GetIO()),ImGui::GetContentRegionAvail().x-190.0f*UiScale(ImGui::GetIO())));
       if(ImGui::SliderFloat("Background FOV",&fov,40.0f,140.0f,"%.1f degrees",ImGuiSliderFlags_AlwaysClamp))
         rex::cvar::SetFlagByName("vf2_background_fov",std::to_string(fov));
       if(!reported_) {
@@ -145,7 +187,7 @@ class SettingsDialog final : public rex::ui::SettingsDialog {
       ImGui::SameLine();
       if(ImGui::SmallButton("Reset"))rex::cvar::SetFlagByName("vf2_background_fov","120");
       float horizon=std::stof(rex::cvar::GetFlagByName("vf2_background_horizon"));
-      ImGui::SetNextItemWidth(std::max(180.0f,ImGui::GetContentRegionAvail().x-420.0f));
+      ImGui::SetNextItemWidth(std::max(180.0f*UiScale(ImGui::GetIO()),ImGui::GetContentRegionAvail().x-420.0f*UiScale(ImGui::GetIO())));
       if(ImGui::SliderFloat("Horizon Height / Vertical Offset",&horizon,-192.0f,192.0f,"%.1f px",ImGuiSliderFlags_AlwaysClamp))
         rex::cvar::SetFlagByName("vf2_background_horizon",std::to_string(horizon));
       ImGui::SameLine();
@@ -156,37 +198,6 @@ class SettingsDialog final : public rex::ui::SettingsDialog {
       }
       ImGui::TextDisabled("Positive offset raises the horizon.");
       ImGui::TextDisabled("Distant sky/scenery only. Arena and gameplay camera stay unchanged.");
-      ImGui::Separator();
-      ImGui::TextUnformatted("Background diagnostics");
-      Toggle("Smooth Scroll (subpixel background)","vf2_background_smooth_scroll");
-      Toggle("Decode colors before filtering","vf2_background_color_decode");
-      Toggle("Matched vertical pitch sample","vf2_background_pitch_fix");
-      Toggle("Smooth interlaced water wave","vf2_background_wave_smooth");
-      Toggle("Smooth background filtering (off = pixelated)","vf2_background_linear_composite");
-      {
-        int blur=std::stoi(rex::cvar::GetFlagByName("vf2_background_blur"));
-        const char* names[]={"Off","Soft (2x)","Medium (4x)","Strong (8x)"};
-        ImGui::SetNextItemWidth(300);
-        if(ImGui::SliderInt("Background blur",&blur,0,3,names[std::clamp(blur,0,3)],ImGuiSliderFlags_AlwaysClamp))
-          rex::cvar::SetFlagByName("vf2_background_blur",std::to_string(blur));
-      }
-      Toggle("Smooth static bitmap screens (high-score entry)","vf2_background_static_smooth");
-      Toggle("Upscaled arena backgrounds (textures/replacements/arenas)","vf2_background_replacements");
-      Toggle("Guard background banks on animated arenas","vf2_background_bank_guard");
-      Toggle("Align line-scroll tables (Akira/Jacky/Dural arenas)","vf2_background_line_align");
-      ImGui::TextDisabled("Off = previous behavior, for side-by-side comparison.");
-      ImGui::Separator();
-      auto look=freelook::Get();
-      bool changed=ImGui::Checkbox("Background free-look (diagnostic, 2D layer only)",&look.enabled);
-      ImGui::BeginDisabled(!look.enabled);
-      ImGui::SetNextItemWidth(300);
-      changed|=ImGui::SliderFloat("Yaw offset",&look.yaw,-180.0f,180.0f,"%.1f deg");
-      ImGui::SetNextItemWidth(300);
-      changed|=ImGui::SliderFloat("Pitch offset",&look.pitch,-80.0f,80.0f,"%.1f deg");
-      if(ImGui::SmallButton("Reset view")){look.yaw=look.pitch=0;changed=true;}
-      ImGui::EndDisabled();
-      if(changed)freelook::Set(look);
-      ImGui::TextDisabled("In game: Numpad 4/6 yaw, 8/2 pitch, 5 reset. Applies when F6 is closed.");
       if(ImGui::Button("Save settings"))SaveSettings(config_path_);
   }
   void DrawArcade() {
@@ -194,7 +205,7 @@ class SettingsDialog final : public rex::ui::SettingsDialog {
     Toggle("Random Opponents","vf2_arcade_random_opponents");
     ImGui::TextDisabled("Opponents in random order. Dural is always last. Not available in Ranking Mode.");
     Toggle("Random Arenas","vf2_arcade_random_arenas");
-    ImGui::TextDisabled("Each stage uses a random arena, no repeats. Dural keeps her arena. Not available in Ranking Mode.");
+    ImGui::TextDisabled("Each stage gets a random arena instead of the opponent's own; no repeats. Dural keeps her arena. Not available in Ranking Mode.");
     Toggle("Tourist difficulty","vf2_arcade_tourist");
     ImGui::TextDisabled("Below Easy. CPU strength stays constant for the whole run.");
     Toggle("Hidden Dural: hold Start for 3 s at character select","vf2_dural_hold_start");
@@ -215,9 +226,12 @@ class SettingsDialog final : public rex::ui::SettingsDialog {
   }
   void DrawLauncher(ImGuiIO& io) {
     if(!launcher_open_)return;
-    ImGui::SetNextWindowSizeConstraints(ImVec2(360,0),ImVec2(io.DisplaySize.x*0.95f,io.DisplaySize.y*0.95f));
-    ImGui::SetNextWindowSize(ImVec2(std::min(650.0f,io.DisplaySize.x*0.94f),0),ImGuiCond_Appearing);
+    const float scale=UiScale(io);
+    ImGui::SetNextWindowSizeConstraints(ImVec2(std::min(360.0f,360.0f*scale),0),ImVec2(io.DisplaySize.x*0.95f,io.DisplaySize.y*0.95f));
+    ImGui::SetNextWindowSize(ImVec2(std::min(650.0f*scale,io.DisplaySize.x*0.94f),0),ImGuiCond_Appearing);
+    ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x*0.5f,io.DisplaySize.y*0.03f),ImGuiCond_Appearing,ImVec2(0.5f,0.0f));
     if(ImGui::Begin("Custom Fight Launcher",&launcher_open_,ImGuiWindowFlags_AlwaysAutoResize)) {
+      KeepOnScreen(io);
       bool changed=false;
       if(!launcher_reported_) {
         launcher_reported_=true;
@@ -234,7 +248,7 @@ class SettingsDialog final : public rex::ui::SettingsDialog {
         ImGui::TableNextColumn();
         ImGui::PushID(player);
         ImGui::Text("Player %d",player+1);
-        ImGui::SetNextItemWidth(220);
+        ImGui::SetNextItemWidth(220*UiScale(ImGui::GetIO()));
         changed|=ImGui::Combo("Character",&fight_config_.characters[player],characters,11);
         changed|=ImGui::Checkbox("CPU-controlled",&fight_config_.cpu[player]);
         changed|=ImGui::Checkbox("Alternate costume",&fight_config_.alternate[player]);
@@ -243,25 +257,25 @@ class SettingsDialog final : public rex::ui::SettingsDialog {
       ImGui::EndTable();
       }
       ImGui::Separator();
-      ImGui::SetNextItemWidth(260);
+      ImGui::SetNextItemWidth(260*UiScale(ImGui::GetIO()));
       changed|=ImGui::Combo("Arena",&fight_config_.arena,arenas,16);
       // Tourist runs on the Easy base with the Tourist CPU handicap.
       const char* difficulties[]={"Use Game Settings","Tourist","Easy","Normal","Hard","Hardest"};
       int difficulty=fight_config_.tourist?1:fight_config_.difficulty<0?0:fight_config_.difficulty+2;
-      ImGui::SetNextItemWidth(260);
+      ImGui::SetNextItemWidth(260*UiScale(ImGui::GetIO()));
       if(ImGui::Combo("Difficulty (shared)",&difficulty,difficulties,6)) {
         fight_config_.tourist=difficulty==1;
         fight_config_.difficulty=difficulty==0?-1:difficulty==1?0:difficulty-2;changed=true;
       }
       const char* rounds[]={"Use Game Settings","2","3","4","5"};
       int wins=fight_config_.rounds_to_win<0?0:fight_config_.rounds_to_win-1;
-      ImGui::SetNextItemWidth(260);
+      ImGui::SetNextItemWidth(260*UiScale(ImGui::GetIO()));
       if(ImGui::Combo("Rounds to Win",&wins,rounds,5)) {
         fight_config_.rounds_to_win=wins==0?-1:wins+1;changed=true;
       }
       const char* times[]={"Use Game Settings","15 seconds","30 seconds","45 seconds","60 seconds"};
       int time=fight_config_.round_time<0?0:fight_config_.round_time/15;
-      ImGui::SetNextItemWidth(260);
+      ImGui::SetNextItemWidth(260*UiScale(ImGui::GetIO()));
       if(ImGui::Combo("Round Time",&time,times,5)) {
         fight_config_.round_time=time==0?-1:time*15;changed=true;
       }
