@@ -18,8 +18,8 @@ add_compile_options("-ffile-prefix-map=${VF2_REPO_ROOT}/=" "-ffile-prefix-map=${
 add_link_options("LINKER:/PDBALTPATH:%_PDB%")
 
 # Release versions shown in the launcher footer and stored in VERSIONINFO.
-set(VF2_GAME_VERSION 1.3.3)
-set(VF2_LAUNCHER_VERSION 1.3.3)
+set(VF2_GAME_VERSION 1.3.4)
+set(VF2_LAUNCHER_VERSION 1.3.4)
 foreach(part GAME LAUNCHER)
     string(REPLACE "." ";" parts "${VF2_${part}_VERSION}")
     list(GET parts 0 VF2_${part}_VERSION_MAJOR)

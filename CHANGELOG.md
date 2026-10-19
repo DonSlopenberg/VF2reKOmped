@@ -1,6 +1,6 @@
 # Virtua Fighter 2 reKOmped Changelog
 
-## Unreleased
+## 1.3.4 (2026-10-19)
 
 - Help & Options > Settings (main menu and pause menu): the Screen Size row,
   which had no effect due to widescreen optimizations, is now **Advanced
