@@ -19,10 +19,31 @@
 #include <atomic>
 #include <string>
 #include <cstdlib>
+#include <functional>
 #include "vf2_arcade.h"
 
 namespace vf2 {
 inline std::atomic<bool> achievement_ui_active{false};
+// Set by the app: runs on the UI thread once per ImGui frame.
+inline std::function<void(ImGuiIO&)> ui_frame_hook;
+
+// A window closed with Esc or B: the game gets no input until both are
+// released, so the same press does not also act in a menu or the fight.
+inline std::atomic<bool> close_key_hold{false};
+inline bool CloseKeysDown() {
+  if (GetAsyncKeyState(VK_ESCAPE) & 0x8000) return true;
+  for (DWORD slot = 0; slot < XUSER_MAX_COUNT; ++slot) {
+    XINPUT_STATE state{};
+    if (XInputGetState(slot, &state) == ERROR_SUCCESS && (state.Gamepad.wButtons & XINPUT_GAMEPAD_B)) return true;
+  }
+  return false;
+}
+inline bool GameInputHeldBack() {
+  if (!close_key_hold.load()) return false;
+  if (CloseKeysDown()) return true;
+  close_key_hold.store(false);
+  return false;
+}
 
 // Character select: a side that chose the alternate costume gets its cursor
 // frame in the negative colour. The native frame is part of the ROM's 2D
@@ -56,6 +77,14 @@ class ControllerUi final : public rex::ui::ImGuiDialog {
       : ImGuiDialog(drawer), window_(window) {}
   void OnDraw(ImGuiIO& io) override {
     DrawCostumeFrames(io);
+    if (ui_frame_hook) ui_frame_hook(io);
+    if (const char* test = std::getenv("VF2_TEST_UI_ESC")) {  // test only: file content "1" = Esc held
+      static bool held = false;
+      FILE* file = nullptr;
+      int value = 0;
+      if (fopen_s(&file, test, "r") == 0 && file) { if (fscanf_s(file, "%d", &value) != 1) value = 0; fclose(file); }
+      if ((value == 1) != held) { held = value == 1; io.AddKeyEvent(ImGuiKey_Escape, held); }
+    }
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad | ImGuiConfigFlags_NavEnableKeyboard;
     // Fullscreen: hide the mouse cursor until the mouse moves (F6 stays usable).
     const auto cursor = window_->IsFullscreen() ? rex::ui::Window::CursorVisibility::kAutoHidden

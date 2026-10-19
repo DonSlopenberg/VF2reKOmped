@@ -299,6 +299,19 @@ void BrandStrings(uint8_t* base) {
     bool changed=false;
     for(const char* word:{"console","Console"})
       for(size_t at;(at=value.find(word))!=std::string::npos;){value.replace(at,7,"Slophaus");changed=true;}
+    // Settings menu: the inactive Screen Size row opens the F6 settings
+    // instead (vf2_menu.cpp). Whole strings, English and Japanese tables.
+    static const std::pair<const char*,const char*> kRenamed[]={
+        {"Screen Size","Advanced Settings"},
+        {"Change screen size.","Open reKOmped settings (F6)."},
+        {"\xE7\x94\xBB\xE9\x9D\xA2\xE3\x82\xB5\xE3\x82\xA4\xE3\x82\xBA","\xE8\xA9\xB3\xE7\xB4\xB0\xE8\xA8\xAD\xE5\xAE\x9A"},
+        {"\xE3\x82\xB2\xE3\x83\xBC\xE3\x83\xA0\xE7\x94\xBB\xE9\x9D\xA2\xE3\x81\xAE\xE8\xA1\xA8\xE7\xA4\xBA"
+         "\xE3\x82\xB5\xE3\x82\xA4\xE3\x82\xBA\xE3\x82\x92\xE5\xA4\x89\xE6\x9B\xB4\xE3\x81\x97\xE3\x81\xBE"
+         "\xE3\x81\x99\xE3\x80\x82",
+         "reKOmped \xE3\x81\xAE\xE8\xA8\xAD\xE5\xAE\x9A\xE3\x82\x92\xE9\x96\x8B\xE3\x81\x8D\xE3\x81\xBE\xE3\x81\x99"
+         "\xEF\xBC\x88" "F6" "\xEF\xBC\x89\xE3\x80\x82"}};
+    for(const auto& [from,to]:kRenamed)
+      if(value==from){value=to;changed=true;}
     if(!changed)continue;
     const uint32_t copy=REX_KERNEL_MEMORY()->SystemHeapAlloc(uint32_t(value.size()+1));
     if(!copy)return;

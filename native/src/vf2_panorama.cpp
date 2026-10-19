@@ -322,6 +322,17 @@ int queued_tile_origin=0;
 std::array<int16_t,512> line_offsets{};
 uint64_t line_offsets_frame=0;
 bool line_offsets_valid=false;
+// Dural's water wave (arenas 10/11) as an exact function of the panorama
+// row, for the upscaled background: whole-pixel table offsets made the
+// columns step like a sawtooth at high resolutions.
+constexpr double kWaveAmplitude=3.5,kWaveLength=112.0,kWavePeriod=128.0;  // source px, rows, ticks
+double wave_time=0;
+uint64_t wave_frame=0;
+bool wave_exact=false;
+double WaveOffset(double row) {
+  constexpr double kPi=3.14159265358979323846;
+  return kWaveAmplitude*std::sin(2*kPi*(row/kWaveLength-wave_time/kWavePeriod));
+}
 constexpr double kLineShiftSign=-1;  // measured: +offset moves the image right
 constexpr unsigned kBackPriority=1;  // measured: priority 1 holds the panorama behind 3D
 std::filesystem::path ReplacementDirectory() {
@@ -699,6 +710,16 @@ void FlushPending(PPCContext& ctx,uint8_t* base,unsigned priority) {
         if(!wave) {
           if(s0+span<=width)piece(u0,u1,s0);
           else {const double cut=u0+(width-s0);piece(u0,cut,s0);piece(cut,u1,0);}
+        } else if(wave_exact && wave_frame+2>=frame) {
+          // Dural: exact sub-pixel offsets, two strips per panorama row.
+          const double dy=(y1-y0)/(v1-v0);
+          constexpr int kSub=2;
+          for(int v=int(v0);v<int(v1);++v)
+            for(int k=0;k<kSub;++k) {
+              const double a=v+double(k)/kSub,b=v+double(k+1)/kSub;
+              const double o=(v>=kSwatchRow && v<kSwatchRow+2)?0.0:WaveOffset((a+b)*0.5);
+              wrapped(y0+(a-v0)*dy,y0+(b-v0)*dy,a,b,kLineShiftSign*o);
+            }
         } else {
           const double dy=(y1-y0)/(v1-v0);
           for(int v=int(v0);v<int(v1);) {
@@ -1083,19 +1104,17 @@ REX_HOOK_RAW(sub_82188AB0) {
     const uint32_t memory=REX_LOAD_U32(0x833BD428);
     const uint8_t arena=memory && memory<0xf0000000 ? base[memory+0x500064] : 0xFF;
     if(arena==10 || arena==11) {
-      constexpr double kPi=3.14159265358979323846;
-      constexpr double kAmplitude=3.5,kWavelength=112.0,kPeriod=128.0;  // source px, rows, ticks
-      const double time=std::fmod(double(REX_LOAD_U32(0x82E7E38C))+vf2::render::Alpha(),kPeriod);
-      for(uint32_t i=0;i<count;++i) {
-        const double v=kAmplitude*std::sin(2*kPi*(double(i)/kWavelength-time/kPeriod));
-        REX_STORE_U16(destination+i*2,uint16_t(int16_t(std::lround(v))));
-      }
-      for(int i=vf2::panorama::kSwatchRow;i<vf2::panorama::kSwatchRow+2 && i<int(count);++i)REX_STORE_U16(destination+i*2,0);
+      using namespace vf2::panorama;
+      wave_time=std::fmod(double(REX_LOAD_U32(0x82E7E38C))+vf2::render::Alpha(),kWavePeriod);
+      // The native tile shader takes whole pixels (original look).
+      for(uint32_t i=0;i<count;++i)
+        REX_STORE_U16(destination+i*2,uint16_t(int16_t(std::lround(WaveOffset(double(i))))));
+      for(int i=kSwatchRow;i<kSwatchRow+2 && i<int(count);++i)REX_STORE_U16(destination+i*2,0);
       if(layer==1) {
-        using namespace vf2::panorama;
         line_offsets.fill(0);
         for(uint32_t i=0;i<count;++i)line_offsets[i]=int16_t(REX_LOAD_U16(destination+i*2));
         line_offsets_frame=frame;line_offsets_valid=true;
+        wave_frame=frame;wave_exact=true;
       }
       ctx.r3.u64=1;  // changed: upload every frame, the wave moves continuously
       return;

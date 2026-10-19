@@ -6,6 +6,7 @@
 #include <array>
 #include <fstream>
 #include <atomic>
+#include "vf2_menu.h"
 
 extern "C" REX_FUNC(__imp__sub_821A9CB0);
 
@@ -18,6 +19,7 @@ bool StartHeld(unsigned user) { return user < 2 && (last_buttons[user].load() & 
 }
 // Applied after every input source (pad, keyboard, test script).
 static void InjectStartupStart(uint8_t* base, uint32_t user, uint32_t state) {
+  vf2::menu::FilterInput(base, user, state);
   if (user < 2 && state) {
     const uint16_t buttons = REX_LOAD_U16(state + 4);
     vf2::input::last_buttons[user].store(buttons);

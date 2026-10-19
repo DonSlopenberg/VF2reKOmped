@@ -22,6 +22,7 @@
 #include "vf2_display.h"
 #include "vf2_monitors.h"
 #include "launcher_config.h"
+#include "vf2_menu.h"
 
 class Vf2App : public rex::ReXApp {
  public:
@@ -185,7 +186,8 @@ class Vf2App : public rex::ReXApp {
     if (runtime()->input_system() && imgui_drawer()) {
       static_cast<rex::input::InputSystem*>(runtime()->input_system())->SetActiveCallback([this] {
         const auto& io = imgui_drawer()->GetIO();
-        return !vf2::achievement_ui_active && !io.WantCaptureMouse && !io.WantCaptureKeyboard;
+        return !vf2::achievement_ui_active && !io.WantCaptureMouse && !io.WantCaptureKeyboard &&
+               !vf2::GameInputHeldBack();
       });
     }
   }
@@ -247,6 +249,14 @@ class Vf2App : public rex::ReXApp {
     rex::ui::RegisterBind("bind_achievements", "F7", "Open local achievements", [this] {
       if (runtime() && runtime()->kernel_state()) vf2::OpenAchievements(imgui_drawer(), *runtime()->kernel_state());
     });
+    vf2::ui_frame_hook = [this](ImGuiIO&) {
+      // Settings > Advanced Settings (main and pause menu) opens F6 on its first tab.
+      if (!vf2::menu::TakeOpenSettingsRequest()) return;
+      if (!settings_ui_ || !settings_ui_->IsOpen())
+        settings_ui_ = std::make_unique<vf2::SettingsDialog>(imgui_drawer(), settings_config_path_,
+                                                             user_data_root() / "custom-fight.cfg");
+      settings_ui_->SelectFirstTab();
+    };
   }
 
   void OnShutdown() override {

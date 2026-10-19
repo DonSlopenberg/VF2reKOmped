@@ -41,6 +41,7 @@ set(VF2_SOURCES
     src/vf2_demo.cpp
     src/vf2_interpolation.cpp
     src/vf2_arcade.cpp
+    src/vf2_menu.cpp
 )
 
 list(APPEND VF2_SOURCES src/vf2_background_scroll.cpp src/vf2_panorama.cpp)

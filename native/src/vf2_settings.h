@@ -13,6 +13,7 @@
 #include "vf2_fight_config.h"
 #include "vf2_display.h"
 #include "vf2_arcade.h"
+#include "vf2_ui.h"
 
 namespace vf2 {
 inline std::string TomlString(std::string_view text) {
@@ -68,6 +69,8 @@ class SettingsDialog final : public rex::ui::SettingsDialog {
   }
   ~SettingsDialog() override { fight::SetSettingsOpen(false); }
   bool IsOpen() const { return open_; }
+  // Next frame shows VF2 reKOmped > Display (opened from Advanced Settings).
+  void SelectFirstTab() { select_first_=true; }
  protected:
   void OnDraw(ImGuiIO& io) override {
     if(!open_)return;
@@ -88,9 +91,11 @@ class SettingsDialog final : public rex::ui::SettingsDialog {
       ImGui::SameLine();
       ImGui::TextDisabled("F6: return here at any time");
       if(ImGui::BeginTabBar("Settings sections")) {
-        if(ImGui::BeginTabItem("VF2 reKOmped")) {
+        const ImGuiTabItemFlags first=select_first_?ImGuiTabItemFlags_SetSelected:0;
+        select_first_=false;
+        if(ImGui::BeginTabItem("VF2 reKOmped",nullptr,first)) {
           if(ImGui::BeginTabBar("VF2 sections")) {
-            if(ImGui::BeginTabItem("Display")) {
+            if(ImGui::BeginTabItem("Display",nullptr,first)) {
               DrawDisplay();ImGui::EndTabItem();
             }
             if(ImGui::BeginTabItem("Arcade & Cheats")) {
@@ -110,6 +115,15 @@ class SettingsDialog final : public rex::ui::SettingsDialog {
       }
     }
     ImGui::End();
+    // Esc or B closes the Custom Fight window first, then the settings; an
+    // open dropdown or a text field keeps the key for itself.
+    if((ImGui::IsKeyPressed(ImGuiKey_Escape,false) || ImGui::IsKeyPressed(ImGuiKey_GamepadFaceRight,false)) &&
+       !io.WantTextInput && !ImGui::IsPopupOpen("",ImGuiPopupFlags_AnyPopupId|ImGuiPopupFlags_AnyPopupLevel)) {
+      REXLOG_INFO("VF2 settings: {} closed with Esc/B",launcher_open_?"Custom Fight window":"settings");
+      if(launcher_open_)launcher_open_=false;
+      else open_=false;
+      close_key_hold.store(true);
+    }
     if(!open_){ImGui::PopFont();launcher_open_=false;fight::SetSettingsOpen(false);return;}
     DrawLauncher(io);
     if(open_ && draw_advanced_)rex::ui::SettingsDialog::OnDraw(io);
@@ -307,6 +321,7 @@ class SettingsDialog final : public rex::ui::SettingsDialog {
     REXLOG_INFO("VF2 settings and custom launcher closed for gameplay");
   }
   bool open_=true;
+  bool select_first_=false;
   bool draw_advanced_=false;
   bool launcher_open_=false;
   bool launcher_reported_=false;

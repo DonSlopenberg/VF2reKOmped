@@ -1,5 +1,17 @@
 # Virtua Fighter 2 reKOmped Changelog
 
+## Unreleased
+
+- Help & Options > Settings (main menu and pause menu): the Screen Size row,
+  which had no effect due to widescreen optimizations, is now **Advanced
+  Settings** and opens the F6 settings.
+- Esc or B on the controller closes the Custom Fight window, then the F6
+  settings; the same press does not reach the game.
+- Fixed a stitching line in Kage's Arena background (quite embarassing
+  as this is just a simple gradient).
+- Dural arenas with upscaled backgrounds: the water wave moves by exact fractions of a pixel, so the temple columns no longer show jagged steps.
+  Finally, I can rest.
+
 ## 1.3.3 (2026-10-18)
 
 - Fixed the HUD flicker (timer, health bars, SET/READY/WINNER) that came
