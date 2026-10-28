@@ -2,6 +2,8 @@
 
 <p align="center"><b>2012 Xbox360 Live Arcade Edition, recompiled for Windows</b></p>
 
+<p align="center">[![Listed on PlayPorted](https://playported.com/badge.svg)](https://playported.com/ports/640-virtua-fighter-2/)
+
 <div align="justify">
 
 Virtua Fighter 2 reKOmped started as a little experiment, a proof of concept to see whether someone with absolutely no programming experience could build something like this. And apparently, the answer is maybe?
